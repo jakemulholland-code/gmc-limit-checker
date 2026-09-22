@@ -8,11 +8,25 @@ clipped**, or **completely lost** — plus an optional AI review of what's bloat
 
 ```bash
 pip install flask requests
-export OPENAI_API_KEY="sk-..."   # optional — enables the AI bloat panel
 python app.py
 ```
 
 Open **http://localhost:5731**
+
+To enable the AI panel, click **Settings** in the top bar and pick a provider:
+
+| Provider | Notes |
+| --- | --- |
+| **OpenRouter** (default) | One key, hundreds of models from every major lab |
+| **OpenAI** | Direct to OpenAI |
+| **Other** | Any OpenAI-compatible endpoint — Groq, Together, a local Ollama… |
+
+Paste your key and the model dropdown fills with everything that key can reach,
+so you can switch models without touching any code. The key is verified before
+it's saved, then written to a local `.env` next to `app.py` (already gitignored)
+and loaded automatically on future runs. It's only ever sent to the provider you
+picked. A plain `OPENAI_API_KEY` in your shell still works as an OpenAI setup,
+but anything saved through Settings takes precedence.
 
 ## Usage
 

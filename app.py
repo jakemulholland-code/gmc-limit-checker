@@ -8,16 +8,19 @@ fully retained / partially cut / completely lost, and (optionally) asks an AI
 model which retained sections look like bloat that could be trimmed.
 
 Run:
-    export OPENAI_API_KEY="sk-..."   # required only for the AI panel
     python app.py
 
-Then open http://localhost:5731
+Then open http://localhost:5731 and pick an AI provider in the app's Settings
+panel to enable the analysis. OpenRouter, OpenAI, or any OpenAI-compatible
+endpoint works. Credentials are written to a local .env file (gitignored) and
+never leave this machine except in calls to the provider you chose.
 """
 
 import os
 import re
 import json
 import html as html_lib
+from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
@@ -27,10 +30,168 @@ from flask import Flask, request, jsonify, render_template
 
 GOOGLE_LIMIT_BYTES = 2 * 1024 * 1024  # 2,097,152 — Google's documented cap
 PORT = 5731                            # uncommon local port
-AI_MODEL = "gpt-4o"
-OPENAI_URL = "https://api.openai.com/v1/chat/completions"
+
+# Every provider here speaks the OpenAI chat-completions dialect, so one client
+# covers all of them — only the base URL, key and model name change.
+PROVIDERS = {
+    "openrouter": {
+        "label": "OpenRouter",
+        "base_url": "https://openrouter.ai/api/v1",
+        "default_model": "openai/gpt-4o",
+        "keys_url": "https://openrouter.ai/keys",
+        "hint": "One key, hundreds of models from every major lab.",
+        # OpenRouter's /models is public, so it can't prove a key is valid.
+        "auth_path": "/key",
+    },
+    "openai": {
+        "label": "OpenAI",
+        "base_url": "https://api.openai.com/v1",
+        "default_model": "gpt-4o",
+        "keys_url": "https://platform.openai.com/api-keys",
+        "hint": "Direct to OpenAI.",
+    },
+    "custom": {
+        "label": "Other (OpenAI-compatible)",
+        "base_url": "",
+        "default_model": "",
+        "keys_url": "",
+        "hint": "Anything speaking the OpenAI API — Groq, Together, a local Ollama, etc.",
+    },
+}
+DEFAULT_PROVIDER = "openrouter"
+
+ENV_FILE = Path(__file__).resolve().parent / ".env"
+ENV_PROVIDER, ENV_KEY, ENV_MODEL, ENV_BASE = (
+    "AI_PROVIDER", "AI_API_KEY", "AI_MODEL", "AI_BASE_URL"
+)
 
 app = Flask(__name__)
+
+
+# ---- Credential storage (.env) ----------------------------------------------
+
+def load_env_file() -> None:
+    """
+    Read .env into os.environ. Settings saved through the app override
+    shell-set ones, so what the user last saved is what runs.
+    """
+    if not ENV_FILE.exists():
+        return
+    for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        name, _, value = line.partition("=")
+        name = name.strip()
+        value = value.strip().strip('"').strip("'")
+        if name:
+            os.environ[name] = value
+
+
+def write_env_values(values: dict[str, str | None]) -> None:
+    """Persist (or clear) settings in .env, preserving any unrelated entries."""
+    lines = []
+    if ENV_FILE.exists():
+        lines = [
+            ln for ln in ENV_FILE.read_text(encoding="utf-8").splitlines()
+            if not any(ln.strip().startswith(f"{n}=") for n in values)
+        ]
+    for name, value in values.items():
+        if value:
+            lines.append(f'{name}="{value}"')
+        os.environ.pop(name, None)
+        if value:
+            os.environ[name] = value
+    ENV_FILE.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
+    os.chmod(ENV_FILE, 0o600)
+
+
+def get_ai_config() -> dict:
+    """Resolve the active provider settings from the environment."""
+    provider = os.environ.get(ENV_PROVIDER, "").strip().lower()
+    key = os.environ.get(ENV_KEY, "").strip()
+
+    # A plain OPENAI_API_KEY in the shell is still honoured as an OpenAI setup.
+    if not key and os.environ.get("OPENAI_API_KEY", "").strip():
+        provider, key = "openai", os.environ["OPENAI_API_KEY"].strip()
+
+    if provider not in PROVIDERS:
+        provider = DEFAULT_PROVIDER
+    preset = PROVIDERS[provider]
+    base_url = (os.environ.get(ENV_BASE, "").strip() or preset["base_url"]).rstrip("/")
+    model = os.environ.get(ENV_MODEL, "").strip() or preset["default_model"]
+    return {"provider": provider, "key": key, "base_url": base_url, "model": model}
+
+
+def mask_key(key: str) -> str:
+    return f"{key[:3]}...{key[-4:]}" if len(key) > 11 else "*" * len(key)
+
+
+def provider_label(provider: str) -> str:
+    return PROVIDERS.get(provider, PROVIDERS[DEFAULT_PROVIDER])["label"]
+
+
+def auth_headers(cfg: dict) -> dict:
+    headers = {"authorization": f"Bearer {cfg['key']}"}
+    if cfg["provider"] == "openrouter":
+        # OpenRouter uses these to attribute traffic to the calling app.
+        headers["HTTP-Referer"] = "https://paramountdigital.co.uk"
+        headers["X-Title"] = "GMC 2MB Limit Checker"
+    return headers
+
+
+def provider_get(cfg: dict, path: str) -> tuple[bool, dict, str]:
+    label = provider_label(cfg["provider"])
+    try:
+        resp = requests.get(
+            f"{cfg['base_url']}{path}", headers=auth_headers(cfg), timeout=20
+        )
+    except requests.RequestException as e:
+        return False, {}, f"Could not reach {label}: {e}"
+    if resp.status_code in (401, 403):
+        return False, {}, f"{label} rejected that key. Check you copied it in full."
+    if not resp.ok:
+        return False, {}, f"{label} returned {resp.status_code}. Try again shortly."
+    try:
+        return True, resp.json(), ""
+    except ValueError:
+        return False, {}, f"{label} returned an unexpected response — check the base URL."
+
+
+def verify_key(cfg: dict) -> tuple[bool, str]:
+    """
+    Confirm the key actually authenticates. Providers whose model list is
+    public need a dedicated authenticated endpoint to prove anything.
+    """
+    path = PROVIDERS.get(cfg["provider"], {}).get("auth_path", "/models")
+    ok, _, error = provider_get(cfg, path)
+    return ok, error
+
+
+def fetch_models(cfg: dict) -> tuple[bool, list[str], str]:
+    """List the models this key can use, so the UI can offer a picker."""
+    ok, body, error = provider_get(cfg, "/models")
+    if not ok:
+        return False, [], error
+    entries = body.get("data")
+    if not isinstance(entries, list):
+        return False, [], "That endpoint did not return a model list."
+    return True, sorted(str(m.get("id", "")) for m in entries if m.get("id")), ""
+
+
+def local_request_only():
+    """
+    Block cross-origin writes. This app binds to localhost, but a page in the
+    user's browser could still POST here, so key-changing routes require a
+    same-origin request.
+    """
+    origin = request.headers.get("Origin")
+    if origin and origin.rstrip("/") != f"{request.scheme}://{request.host}":
+        return jsonify({"ok": False, "error": "Cross-origin request refused."}), 403
+    return None
+
+
+load_env_file()
 
 
 # ---- HTML fetching ----------------------------------------------------------
@@ -596,10 +757,26 @@ def analyse(raw: bytes):
 
 # ---- AI ranking-impact analysis ---------------------------------------------
 
+def extract_json(text: str) -> str:
+    """
+    Pull the JSON object out of a model reply. Models behind OpenRouter vary in
+    how strictly they honour a JSON-only instruction — some wrap it in fences,
+    some add a sentence of preamble — so fall back to the outermost braces.
+    """
+    text = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.MULTILINE).strip()
+    if text.startswith("{"):
+        return text
+    start, end = text.find("{"), text.rfind("}")
+    return text[start:end + 1] if start != -1 and end > start else text
+
+
+
 def ai_bloat_review(analysis: dict, raw: bytes) -> dict:
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        return {"ok": False, "error": "OPENAI_API_KEY not set in environment."}
+    cfg = get_ai_config()
+    if not cfg["key"]:
+        return {"ok": False, "error": "No AI provider configured — set one up in Settings."}
+    if not cfg["base_url"] or not cfg["model"]:
+        return {"ok": False, "error": "Provider is missing a base URL or model — check Settings."}
 
     over = analysis.get("over_limit")
 
@@ -751,30 +928,36 @@ def ai_bloat_review(analysis: dict, raw: bytes) -> dict:
         '"lost_summary":"...","impact":"high","verdict":"..."}'
     )
 
+    text = ""
     try:
         resp = requests.post(
-            OPENAI_URL,
-            headers={
-                "content-type": "application/json",
-                "authorization": f"Bearer {api_key}",
-            },
+            f"{cfg['base_url']}/chat/completions",
+            headers={"content-type": "application/json", **auth_headers(cfg)},
             json={
-                "model": AI_MODEL,
+                "model": cfg["model"],
                 "max_tokens": 4000,
                 "messages": [{"role": "user", "content": prompt}],
                 "response_format": {"type": "json_object"},
             },
-            timeout=90,
+            timeout=120,
         )
         resp.raise_for_status()
         data = resp.json()
+        if "choices" not in data:
+            # OpenAI-compatible gateways report upstream failures in the body.
+            detail = (data.get("error") or {}).get("message") or json.dumps(data)[:200]
+            return {"ok": False, "error": f"{provider_label(cfg['provider'])}: {detail}"}
         text = data["choices"][0]["message"]["content"].strip()
-        text = re.sub(r"^```(?:json)?|```$", "", text.strip()).strip()
-        parsed = json.loads(text)
+        parsed = json.loads(extract_json(text))
         parsed["seo_hits"] = seo_hits  # attach ground-truth scan for the UI
+        parsed["model_used"] = cfg["model"]
         return {"ok": True, **parsed}
     except json.JSONDecodeError:
-        return {"ok": False, "error": "Analysis returned unparseable output.", "raw": text[:500]}
+        return {
+            "ok": False,
+            "error": f"{cfg['model']} did not return usable JSON. Try a stronger model in Settings.",
+            "raw": text[:500],
+        }
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "error": str(e)}
 
@@ -860,9 +1043,119 @@ def build_truncated_preview(raw: bytes, source_url: str = "") -> str:
 
 # ---- Routes -----------------------------------------------------------------
 
+def config_status() -> dict:
+    """Public view of the AI settings — the key itself is never included."""
+    cfg = get_ai_config()
+    return {
+        "ok": True,
+        "configured": bool(cfg["key"]),
+        "masked": mask_key(cfg["key"]) if cfg["key"] else "",
+        "provider": cfg["provider"],
+        "model": cfg["model"],
+        "base_url": cfg["base_url"],
+    }
+
+
 @app.route("/")
 def index():
-    return render_template("index.html", has_key=bool(os.environ.get("OPENAI_API_KEY")))
+    status = config_status()
+    return render_template(
+        "index.html",
+        has_key=status["configured"],
+        status=status,
+        providers=PROVIDERS,
+    )
+
+
+@app.route("/api/ai-config", methods=["GET", "POST", "DELETE"])
+def ai_config_route():
+    """Read, save, or clear the AI provider settings. Never returns the key."""
+    if request.method == "GET":
+        return jsonify(config_status())
+
+    refused = local_request_only()
+    if refused:
+        return refused
+
+    if request.method == "DELETE":
+        write_env_values({ENV_PROVIDER: None, ENV_KEY: None, ENV_MODEL: None, ENV_BASE: None})
+        os.environ.pop("OPENAI_API_KEY", None)
+        return jsonify(config_status())
+
+    payload = request.get_json(silent=True) or {}
+    provider = (payload.get("provider") or DEFAULT_PROVIDER).strip().lower()
+    if provider not in PROVIDERS:
+        return jsonify({"ok": False, "error": "Unknown provider."}), 400
+
+    current = get_ai_config()
+    # Blank key means "keep the saved one" so users can change model alone.
+    key = (payload.get("key") or "").strip() or (current["key"] if current["provider"] == provider else "")
+    if not key:
+        return jsonify({"ok": False, "error": "Paste an API key first."}), 400
+
+    base_url = (payload.get("base_url") or "").strip().rstrip("/") or PROVIDERS[provider]["base_url"]
+    if not base_url:
+        return jsonify({"ok": False, "error": "Enter the API base URL for this provider."}), 400
+    if not base_url.startswith(("http://", "https://")):
+        return jsonify({"ok": False, "error": "Base URL must start with http:// or https://."}), 400
+
+    candidate = {"provider": provider, "key": key, "base_url": base_url, "model": ""}
+    valid, error = verify_key(candidate)
+    if not valid:
+        return jsonify({"ok": False, "error": error}), 400
+    listed, models, error = fetch_models(candidate)
+    if not listed:
+        return jsonify({"ok": False, "error": error}), 400
+
+    model = (payload.get("model") or "").strip() or PROVIDERS[provider]["default_model"]
+    if not model:
+        return jsonify({"ok": False, "error": "Choose a model.", "models": models}), 400
+    if models and model not in models:
+        return jsonify({
+            "ok": False,
+            "error": f"'{model}' isn't available on this key.",
+            "models": models,
+        }), 400
+
+    write_env_values({
+        ENV_PROVIDER: provider,
+        ENV_KEY: key,
+        ENV_MODEL: model,
+        # Only pin a base URL when it differs from the preset, so preset
+        # changes aren't frozen in place by a stale .env entry.
+        ENV_BASE: base_url if base_url != PROVIDERS[provider]["base_url"] else None,
+    })
+    # A shell OPENAI_API_KEY would otherwise shadow the choice just saved.
+    os.environ.pop("OPENAI_API_KEY", None)
+    return jsonify({**config_status(), "models": models})
+
+
+@app.route("/api/ai-models", methods=["POST"])
+def ai_models_route():
+    """List models available to a key, for the Settings model picker."""
+    refused = local_request_only()
+    if refused:
+        return refused
+
+    payload = request.get_json(silent=True) or {}
+    provider = (payload.get("provider") or DEFAULT_PROVIDER).strip().lower()
+    if provider not in PROVIDERS:
+        return jsonify({"ok": False, "error": "Unknown provider."}), 400
+
+    current = get_ai_config()
+    key = (payload.get("key") or "").strip() or (current["key"] if current["provider"] == provider else "")
+    base_url = (payload.get("base_url") or "").strip().rstrip("/") or PROVIDERS[provider]["base_url"]
+    if not key or not base_url:
+        return jsonify({"ok": False, "error": "Need a key and base URL to list models."}), 400
+
+    candidate = {"provider": provider, "key": key, "base_url": base_url, "model": ""}
+    valid, error = verify_key(candidate)
+    if not valid:
+        return jsonify({"ok": False, "error": error}), 400
+    listed, models, error = fetch_models(candidate)
+    if not listed:
+        return jsonify({"ok": False, "error": error}), 400
+    return jsonify({"ok": True, "models": models, "default": PROVIDERS[provider]["default_model"]})
 
 
 @app.route("/analyse", methods=["POST"])
@@ -967,6 +1260,8 @@ def source_route():
 
 
 if __name__ == "__main__":
-    print(f"\n  Google 2MB Limit Checker → http://localhost:{PORT}")
-    print(f"  AI review: {'ENABLED' if os.environ.get('OPENAI_API_KEY') else 'set OPENAI_API_KEY to enable'}\n")
+    print(f"\n  Google 2MB Limit Checker -> http://localhost:{PORT}")
+    _cfg = get_ai_config()
+    _ai = f"{provider_label(_cfg['provider'])} / {_cfg['model']}" if _cfg["key"] else "set up a provider in the app under Settings"
+    print(f"  AI review: {_ai}\n")
     app.run(port=PORT, debug=False)

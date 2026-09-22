@@ -241,6 +241,33 @@
     .hidden{display:none !important;}
     .keyhint{font-size:.68rem;color:var(--muted2);margin-top:.6rem;}
     .keyhint code{color:#a9770f;font-family:'SF Mono',Menlo,monospace;}
+    .keyhint button{background:none;border:none;padding:0;font:inherit;color:var(--teal-dark);font-weight:600;cursor:pointer;text-decoration:underline;}
+
+    .btn-settings{display:flex;align-items:center;gap:.4rem;background:none;border:1px solid var(--line2);border-radius:7px;padding:.35rem .7rem;font:inherit;font-size:.7rem;color:var(--muted);cursor:pointer;}
+    .btn-settings:hover{color:var(--teal-dark);border-color:var(--teal);}
+    .btn-settings svg{width:13px;height:13px;}
+    .key-dot{width:6px;height:6px;border-radius:50%;background:var(--muted2);}
+    .key-dot.on{background:var(--teal);}
+
+    .modal-back{position:fixed;inset:0;background:rgba(15,20,25,.45);display:flex;align-items:center;justify-content:center;padding:1.5rem;z-index:50;}
+    .modal{background:#fff;border-radius:14px;max-width:460px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.2);overflow:hidden;}
+    .modal-head{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 1.4rem;border-bottom:1px solid var(--line);}
+    .modal-head h2{font-size:.95rem;margin:0;}
+    .modal-close{background:none;border:none;font-size:1.3rem;line-height:1;color:var(--muted2);cursor:pointer;padding:0 .2rem;}
+    .modal-body{padding:1.3rem 1.4rem;}
+    .modal-body p{font-size:.75rem;color:var(--muted);margin:0 0 1rem;line-height:1.55;}
+    .modal-body p a{color:var(--teal-dark);font-weight:500;}
+    .modal-body input,.modal-body select{width:100%;padding:.65rem .8rem;border:1px solid var(--line2);border-radius:8px;font-family:'SF Mono',Menlo,monospace;font-size:.78rem;box-sizing:border-box;background:#fff;}
+    .modal-body input:focus,.modal-body select:focus{outline:none;border-color:var(--teal);}
+    .modal-label{display:flex;align-items:center;justify-content:space-between;font-size:.66rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted2);margin:.9rem 0 .35rem;}
+    .modal-label a,.modal-label button{font-size:.62rem;font-weight:600;letter-spacing:.04em;text-transform:none;color:var(--teal-dark);text-decoration:none;background:none;border:none;padding:0;font-family:inherit;cursor:pointer;}
+    .modal-label a:hover,.modal-label button:hover{text-decoration:underline;}
+    .modal-actions{display:flex;gap:.6rem;align-items:center;margin-top:1.2rem;}
+    .btn-link-danger{background:none;border:none;font:inherit;font-size:.72rem;color:var(--red);cursor:pointer;margin-left:auto;}
+    .modal-note{font-size:.68rem;color:var(--muted2);margin-top:1rem;line-height:1.5;}
+    .modal-msg{font-size:.74rem;margin-top:.8rem;font-weight:500;}
+    .modal-msg.err{color:var(--red);}
+    .modal-msg.ok{color:var(--teal-dark);}
 
     footer{border-top:1px solid var(--line);padding:1.8rem 2.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;max-width:1240px;margin:0 auto;}
     .footer-left{display:flex;align-items:center;gap:.8rem;color:var(--muted2);}
@@ -259,8 +286,50 @@
       <span class="topbar-label">2MB Limit Checker</span>
       <div class="topbar-dot"></div>
       <span class="topbar-date" id="updated-date"></span>
+      <button class="btn-settings" id="settings-btn">
+        <span class="key-dot{% if has_key %} on{% endif %}" id="key-dot"></span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </button>
     </div>
   </header>
+
+  <div class="modal-back hidden" id="settings-modal">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>AI provider</h2>
+        <button class="modal-close" id="settings-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="provider-hint">The AI analysis runs through whichever provider you configure here.</p>
+
+        <label class="modal-label" for="provider-select">Provider</label>
+        <select id="provider-select">
+          {% for id, p in providers.items() %}
+          <option value="{{ id }}" {% if status.provider == id %}selected{% endif %}>{{ p.label }}</option>
+          {% endfor %}
+        </select>
+
+        <div id="base-url-row" class="hidden">
+          <label class="modal-label" for="base-url-input">API base URL</label>
+          <input type="text" id="base-url-input" placeholder="https://your-endpoint/v1" autocomplete="off" spellcheck="false" value="{{ status.base_url }}">
+        </div>
+
+        <label class="modal-label" for="key-input">API key <a id="keys-link" href="#" target="_blank" rel="noopener">get one</a></label>
+        <input type="password" id="key-input" placeholder="sk-..." autocomplete="off" spellcheck="false">
+
+        <label class="modal-label" for="model-select">Model <button type="button" id="model-refresh">refresh list</button></label>
+        <select id="model-select"><option value="{{ status.model }}">{{ status.model or 'Enter a key to load models' }}</option></select>
+
+        <div class="modal-actions">
+          <button class="btn-run" id="key-save">Save</button>
+          <button class="btn-link-danger hidden" id="key-remove">Remove saved settings</button>
+        </div>
+        <div class="modal-msg" id="key-msg"></div>
+        <div class="modal-note">Stored in a local <code>.env</code> file next to the app, which is excluded from version control. Your key is only ever sent to the provider you pick.</div>
+      </div>
+    </div>
+  </div>
 
   <section class="hero">
     <div class="hero-inner">
@@ -280,7 +349,7 @@
           <button class="btn-run" id="run-btn">Run check</button>
           <button class="btn-secondary" id="ai-btn" disabled>Run analysis</button>
         </div>
-        {% if not has_key %}<div class="keyhint">Analysis disabled &mdash; start the script with <code>set OPENAI_API_KEY=sk-...</code> (Windows) or <code>export OPENAI_API_KEY=sk-...</code> (Mac/Linux) to enable it.</div>{% endif %}
+        <div class="keyhint{% if has_key %} hidden{% endif %}" id="key-hint">Analysis needs an AI provider &mdash; <button type="button" id="key-hint-link">set one up in Settings</button>.</div>
         <div id="input-error"></div>
       </div>
     </div>
@@ -419,6 +488,112 @@
 
     runBtn.addEventListener('click', runCheck);
     aiBtn.addEventListener('click', runAI);
+
+    // ---- AI provider settings ----
+    const PROVIDERS = {{ providers | tojson }};
+    const modal = $('settings-modal'), keyInput = $('key-input'), keyMsg = $('key-msg');
+    const providerSel = $('provider-select'), modelSel = $('model-select'), baseInput = $('base-url-input');
+    let hasKey = {{ 'true' if has_key else 'false' }};
+    let savedModel = {{ status.model | tojson }};
+
+    function openSettings(){ modal.classList.remove('hidden'); keyMsg.textContent = ''; keyInput.focus(); }
+    function closeSettings(){ modal.classList.add('hidden'); keyInput.value = ''; }
+
+    $('settings-btn').addEventListener('click', openSettings);
+    $('settings-close').addEventListener('click', closeSettings);
+    $('key-hint-link').addEventListener('click', openSettings);
+    modal.addEventListener('click', e => { if(e.target === modal) closeSettings(); });
+    document.addEventListener('keydown', e => { if(e.key === 'Escape') closeSettings(); });
+
+    function syncProvider(){
+      const p = PROVIDERS[providerSel.value] || {};
+      $('provider-hint').textContent = p.hint || '';
+      $('base-url-row').classList.toggle('hidden', providerSel.value !== 'custom');
+      if(providerSel.value !== 'custom') baseInput.value = p.base_url || '';
+      const link = $('keys-link');
+      link.href = p.keys_url || '#';
+      link.classList.toggle('hidden', !p.keys_url);
+    }
+    providerSel.addEventListener('change', () => { syncProvider(); setModels([], ''); });
+
+    function setModels(models, selected){
+      modelSel.innerHTML = '';
+      if(!models.length){
+        modelSel.innerHTML = '<option value="">Enter a key, then refresh the list</option>';
+        return;
+      }
+      for(const m of models){
+        const o = document.createElement('option');
+        o.value = m; o.textContent = m;
+        if(m === selected) o.selected = true;
+        modelSel.appendChild(o);
+      }
+    }
+
+    function currentInputs(){
+      return {
+        provider: providerSel.value,
+        key: keyInput.value.trim(),
+        base_url: baseInput.value.trim()
+      };
+    }
+
+    async function loadModels(){
+      keyMsg.className = 'modal-msg';
+      keyMsg.textContent = 'Loading models...';
+      const res = await fetch('/api/ai-models', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(currentInputs())
+      });
+      const data = await res.json();
+      if(!data.ok){ keyMsg.className = 'modal-msg err'; keyMsg.textContent = data.error; return; }
+      setModels(data.models, savedModel || data.default);
+      keyMsg.className = 'modal-msg ok';
+      keyMsg.textContent = data.models.length + ' models available.';
+    }
+    $('model-refresh').addEventListener('click', loadModels);
+
+    function setKeyState(data){
+      hasKey = data.configured;
+      savedModel = data.model || '';
+      $('key-dot').classList.toggle('on', data.configured);
+      $('key-hint').classList.toggle('hidden', data.configured);
+      $('key-remove').classList.toggle('hidden', !data.configured);
+      keyInput.placeholder = data.configured ? 'Saved: ' + data.masked + ' — paste a new key to replace' : 'sk-...';
+      if(data.provider) providerSel.value = data.provider;
+      if(data.base_url) baseInput.value = data.base_url;
+      syncProvider();
+    }
+
+    async function saveConfig(method){
+      keyMsg.className = 'modal-msg';
+      keyMsg.textContent = method === 'POST' ? 'Verifying with provider...' : '';
+      const body = method === 'POST' ? {...currentInputs(), model: modelSel.value} : null;
+      const res = await fetch('/api/ai-config', {
+        method, headers: {'Content-Type':'application/json'},
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const data = await res.json();
+      if(!data.ok){
+        keyMsg.className = 'modal-msg err';
+        keyMsg.textContent = data.error || 'Something went wrong.';
+        if(data.models) setModels(data.models, '');
+        return;
+      }
+      setKeyState(data);
+      if(data.models) setModels(data.models, data.model);
+      keyInput.value = '';
+      keyMsg.className = 'modal-msg ok';
+      keyMsg.textContent = data.configured
+        ? 'Saved — using ' + data.model + '.'
+        : 'Settings removed.';
+    }
+
+    $('key-save').addEventListener('click', () => saveConfig('POST'));
+    $('key-remove').addEventListener('click', () => saveConfig('DELETE'));
+    keyInput.addEventListener('keydown', e => { if(e.key === 'Enter') loadModels(); });
+
+    setKeyState({{ status | tojson }});
 
     async function runCheck(){
       const source = $('source').value.trim();
@@ -852,6 +1027,7 @@
       none:{lab:'NO IMPACT', cls:'impact-none'}
     };
     async function runAI(){
+      if(!hasKey){ openSettings(); return; }
       const source = $('source').value.trim();
       $('ai-panel').classList.remove('hidden');
       $('ai-body').innerHTML = '<div class="loading-state"><div class="spinner"></div>Reading the lost HTML &amp; judging ranking impact...</div>';
