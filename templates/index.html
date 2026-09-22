@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2MB Limit Checker | Paramount Digital</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Fraunces:ital,wght@0,700;0,900;1,700&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#ffffff; --surface:#ffffff; --surface2:#f6f7f8; --surface3:#fbfbfc;
+      --ink:#1a1a1a; --text:#2a2a2a; --muted:#6a6a6a; --muted2:#a3a3a3;
+      --line:#ededed; --line2:#dedede;
+      --teal:#01C6A3; --teal-dark:#008475; --amber:#E8A828; --red:#DA1A50;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    html{scroll-behavior:smooth;}
+    body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;font-weight:300;-webkit-font-smoothing:antialiased;line-height:1.5;}
+
+    .topbar{background:#fff;border-bottom:1px solid var(--line);padding:0 2.5rem;height:74px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
+    .topbar-logo{display:flex;align-items:center;color:var(--ink);}
+    .topbar-logo .paramount-logo{height:30px;width:auto;display:block;}
+    .topbar-right{display:flex;align-items:center;gap:.85rem;}
+    .topbar-label{font-size:.62rem;letter-spacing:.22em;text-transform:uppercase;color:var(--teal-dark);font-weight:600;}
+    .topbar-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:pulse 2s infinite;}
+    .topbar-date{font-size:.66rem;color:var(--muted2);letter-spacing:.04em;}
+    @keyframes pulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.35;transform:scale(.6);}}
+
+    .hero{position:relative;overflow:hidden;padding:4rem 2.5rem 3.2rem;border-bottom:1px solid var(--line);background:var(--surface3);}
+    .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 50% 60% at 100% 0%,rgba(1,198,163,.10) 0%,transparent 55%),radial-gradient(ellipse 40% 50% at 0% 100%,rgba(232,168,40,.07) 0%,transparent 55%);pointer-events:none;}
+    .hero-inner{max-width:1240px;margin:0 auto;position:relative;}
+    .hero-kicker{display:inline-flex;align-items:center;gap:.6rem;font-size:.64rem;letter-spacing:.22em;text-transform:uppercase;color:var(--teal-dark);font-weight:600;margin-bottom:1.2rem;}
+    .hero-kicker::before{content:'';display:block;width:26px;height:2px;background:var(--teal);border-radius:2px;}
+    .hero-title{font-family:'Fraunces',serif;font-size:clamp(2.3rem,5.2vw,4rem);font-weight:900;line-height:1.02;letter-spacing:-.025em;color:var(--ink);margin-bottom:1.1rem;}
+    .hero-title .accent{color:var(--teal-dark);font-style:italic;}
+    .hero-sub{color:var(--muted);font-size:.92rem;max-width:620px;line-height:1.8;font-weight:400;}
+
+    .main-wrap{max-width:1240px;margin:0 auto;padding:2.4rem 2.5rem 4rem;}
+
+    .panel{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:1.5rem;box-shadow:0 1px 2px rgba(16,24,40,.03);}
+    .panel-header{padding:1.05rem 1.4rem;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:.75rem;}
+    .panel-icon{width:28px;height:28px;border-radius:8px;background:rgba(1,198,163,.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--teal-dark);}
+    .panel-icon svg{width:15px;height:15px;display:block;}
+    .panel-title{font-size:.62rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--teal-dark);}
+    .panel-title .sub{color:var(--muted2);text-transform:none;letter-spacing:0;font-weight:400;}
+    .panel-body{padding:1.4rem;}
+
+    label.field-label{display:block;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:.45rem;}
+    textarea,input[type=text]{width:100%;background:var(--surface2);border:1px solid var(--line2);color:var(--text);font-family:'Sora',sans-serif;font-size:.84rem;font-weight:400;padding:.7rem .9rem;border-radius:9px;transition:border-color .14s,background .14s;outline:none;line-height:1.6;}
+    textarea:focus,input:focus{border-color:var(--teal);background:#fff;}
+    textarea::placeholder,input::placeholder{color:var(--muted2);}
+    textarea{min-height:90px;resize:vertical;font-family:'SF Mono',Menlo,monospace;font-size:.8rem;}
+
+    .btn-run{background:var(--teal-dark);color:#fff;border:none;padding:.72rem 1.4rem;border-radius:9px;font-family:'Sora',sans-serif;font-size:.76rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:background .14s,transform .1s;display:inline-flex;align-items:center;gap:.5rem;}
+    .btn-run:hover{background:var(--teal);}
+    .btn-run:active{transform:scale(.98);}
+    .btn-run:disabled{background:var(--muted2);cursor:not-allowed;}
+    .btn-secondary{background:#fff;color:var(--muted);border:1px solid var(--line2);padding:.72rem 1.2rem;border-radius:9px;font-family:'Sora',sans-serif;font-size:.72rem;font-weight:600;letter-spacing:.05em;cursor:pointer;transition:border-color .14s,color .14s;text-transform:uppercase;}
+    .btn-secondary:hover{border-color:var(--teal);color:var(--teal-dark);}
+    .btn-secondary:disabled{opacity:.45;cursor:not-allowed;}
+    .actions{display:flex;gap:.75rem;margin-top:1rem;flex-wrap:wrap;}
+
+    .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;}
+    .stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:1.25rem 1.35rem;border-top:3px solid var(--teal);box-shadow:0 1px 2px rgba(16,24,40,.03);}
+    .stat-num{font-family:'Fraunces',serif;font-size:1.9rem;font-weight:700;line-height:1;color:var(--ink);}
+    .stat-label{font-size:.6rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-top:.5rem;font-weight:600;}
+
+    .meter{height:26px;background:var(--surface2);border:1px solid var(--line2);border-radius:8px;overflow:hidden;position:relative;margin-top:1.1rem;}
+    .meter-fill{height:100%;background:linear-gradient(90deg,var(--teal-dark),var(--teal));transition:width .4s ease;}
+    .meter-fill.over{background:linear-gradient(90deg,var(--amber),var(--red));}
+    .meter-mark{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);left:100%;}
+    .meter-label{font-size:.72rem;color:var(--muted);margin-top:.6rem;line-height:1.6;}
+    #flags{margin-top:1.1rem;display:flex;flex-direction:column;gap:.7rem;}
+    .flag{display:flex;gap:.8rem;align-items:flex-start;border-radius:10px;padding:.85rem 1.05rem;border:1px solid var(--line2);}
+    .flag-ico{flex-shrink:0;width:22px;height:22px;margin-top:.05rem;}
+    .flag-ico svg{width:22px;height:22px;display:block;}
+    .flag-body{flex:1;min-width:0;}
+    .flag-title{font-size:.78rem;font-weight:700;letter-spacing:.01em;margin-bottom:.2rem;}
+    .flag-detail{font-size:.76rem;line-height:1.6;color:var(--text);}
+    .flag-detail .quiet{color:var(--muted);}
+    .flag-list{margin:.4rem 0 0;padding-left:1.1rem;display:flex;flex-direction:column;gap:.15rem;}
+    .flag-list li{font-size:.73rem;color:var(--muted);line-height:1.5;}
+    .flag.danger{background:rgba(218,26,80,.06);border-color:rgba(218,26,80,.3);}
+    .flag.danger .flag-title,.flag.danger .flag-ico{color:var(--red);}
+    .flag.warn{background:rgba(232,168,40,.08);border-color:rgba(232,168,40,.35);}
+    .flag.warn .flag-title,.flag.warn .flag-ico{color:#a9770f;}
+    .flag.ok{background:rgba(1,198,163,.06);border-color:rgba(1,198,163,.3);}
+    .flag.ok .flag-title,.flag.ok .flag-ico{color:var(--teal-dark);}
+
+    .table-controls{display:flex;align-items:center;gap:.6rem;padding:.85rem 1.4rem;border-bottom:1px solid var(--line);flex-wrap:wrap;}
+    .ctrl-label{font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600;}
+    .filter-group{display:flex;gap:.4rem;}
+    .filter-btn{background:var(--surface2);border:1px solid var(--line2);color:var(--muted);padding:.3rem .75rem;border-radius:7px;font-family:'Sora',sans-serif;font-size:.66rem;font-weight:600;cursor:pointer;transition:all .12s;}
+    .filter-btn:hover{border-color:var(--teal);color:var(--teal-dark);}
+    .filter-btn.active{background:rgba(1,198,163,.1);border-color:var(--teal);color:var(--teal-dark);}
+    .filter-pipe{width:1px;height:14px;background:var(--line2);}
+    .collapse-toggle{display:flex;align-items:center;gap:.4rem;font-size:.66rem;color:var(--muted);cursor:pointer;margin-left:.3rem;font-weight:500;}
+    .collapse-toggle input{accent-color:var(--teal-dark);}
+    .row-count{margin-left:auto;font-size:.7rem;color:var(--muted2);font-weight:500;}
+    .table-scroll{max-height:560px;overflow-y:auto;}
+
+    table{width:100%;border-collapse:collapse;font-size:.78rem;}
+    th{text-align:left;font-size:.56rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted2);font-weight:700;padding:.65rem .85rem;border-bottom:1px solid var(--line);position:sticky;top:0;background:#fff;}
+    td{padding:.6rem .85rem;border-bottom:1px solid var(--line);vertical-align:middle;}
+    tr:last-child td{border-bottom:none;}
+    tr:hover td{background:var(--surface3);}
+    .mono{font-family:'SF Mono',Menlo,monospace;color:var(--muted);font-size:.72rem;}
+    .row-cut td{opacity:.5;}
+    .barcell{min-width:110px;}
+    .minibar{height:6px;background:var(--surface2);border:1px solid var(--line);border-radius:3px;overflow:hidden;}
+    .minibar>span{display:block;height:100%;}
+    .depth-pill{display:inline-block;font-family:'SF Mono',Menlo,monospace;font-size:.6rem;color:var(--muted2);margin-right:.5rem;}
+    .preview-cell{color:var(--muted);font-size:.72rem;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .ctx-cell{font-family:'SF Mono',Menlo,monospace;font-size:.66rem;color:var(--muted2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .repeat-badge{display:inline-block;font-size:.56rem;font-weight:700;color:var(--amber);background:rgba(232,168,40,.12);padding:.1rem .4rem;border-radius:5px;margin-left:.4rem;}
+
+    .badge{display:inline-block;font-size:.58rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.2rem .55rem;border-radius:5px;}
+    .badge-good{background:rgba(1,198,163,.13);color:var(--teal-dark);}
+    .badge-mid{background:rgba(232,168,40,.14);color:#a9770f;}
+    .badge-low{background:rgba(218,26,80,.1);color:var(--red);}
+
+    .cutline{background:var(--surface2);border:1px solid var(--line2);border-radius:10px;padding:1rem;font-family:'SF Mono',Menlo,monospace;font-size:.72rem;line-height:1.7;overflow-x:auto;white-space:pre-wrap;word-break:break-all;}
+    .cutline .kept{color:var(--teal-dark);}
+    .cutline .lost{color:var(--red);opacity:.75;}
+    .cutline .marker{color:#a9770f;font-weight:700;}
+
+    .preview-note{font-size:.76rem;color:var(--muted);line-height:1.65;margin-bottom:1rem;}
+    .preview-actions{display:flex;align-items:center;gap:.9rem;flex-wrap:wrap;}
+    .preview-meta{font-size:.72rem;color:var(--muted2);}
+    #preview-wrap{margin-top:1.2rem;border:1px solid var(--line2);border-radius:12px;overflow:hidden;background:#fff;}
+    .preview-frame-bar{display:flex;align-items:center;gap:.7rem;padding:.55rem .9rem;background:var(--surface2);border-bottom:1px solid var(--line);}
+    .dotrow{display:flex;gap:.35rem;}
+    .dotrow i{width:9px;height:9px;border-radius:50%;background:var(--line2);display:block;}
+    .preview-url{font-size:.68rem;color:var(--muted2);font-family:'SF Mono',Menlo,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .preview-frame{width:100%;height:620px;border:none;background:#fff;display:block;}
+
+    .source-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1.2rem;}
+    .source-col{border:1px solid var(--line2);border-radius:12px;overflow:hidden;background:#fff;display:flex;flex-direction:column;}
+    .source-col-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.6rem .9rem;background:var(--surface2);border-bottom:1px solid var(--line);}
+    .source-col-name{font-size:.62rem;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--teal-dark);}
+    .source-col-tag{font-size:.56rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:.16rem .5rem;border-radius:5px;}
+    .source-col-tag.full{background:rgba(232,168,40,.14);color:#a9770f;}
+    .source-col-tag.snip{background:rgba(1,198,163,.13);color:var(--teal-dark);}
+    .source-pre{margin:0;padding:.9rem;font-family:'SF Mono',Menlo,monospace;font-size:.66rem;line-height:1.6;color:var(--text);height:520px;overflow:auto;white-space:pre;tab-size:2;}
+    .source-pre.wrap{white-space:pre-wrap;word-break:break-all;}
+    .source-pre .cut-line{display:block;background:var(--red);color:#fff;font-weight:700;padding:.15rem .5rem;margin:.4rem -.9rem;letter-spacing:.03em;}
+    .source-pre .below{opacity:.45;background:rgba(218,26,80,.04);}
+    .source-trunc{display:block;color:var(--muted2);font-style:italic;padding:.3rem 0;}
+    .source-pre mark{background:rgba(232,168,40,.35);color:inherit;border-radius:2px;}
+    .source-pre mark.active{background:var(--amber);color:#1a1a1a;font-weight:600;box-shadow:0 0 0 2px rgba(232,168,40,.4);}
+
+    .source-search{display:flex;align-items:center;gap:.7rem;margin-bottom:.9rem;flex-wrap:wrap;}
+    .search-input-wrap{flex:1;min-width:220px;position:relative;}
+    .search-input-wrap::before{content:'\2315';position:absolute;left:.7rem;top:50%;transform:translateY(-50%) rotate(-45deg);color:var(--muted2);font-size:1rem;}
+    #source-search{width:100%;background:var(--surface2);border:1px solid var(--line2);color:var(--text);font-family:'SF Mono',Menlo,monospace;font-size:.76rem;padding:.55rem .8rem .55rem 2rem;border-radius:8px;outline:none;transition:border-color .14s,background .14s;}
+    #source-search:focus{border-color:var(--teal);background:#fff;}
+    #source-search::placeholder{color:var(--muted2);font-family:'Sora',sans-serif;}
+    .search-count{font-size:.72rem;color:var(--muted);white-space:nowrap;min-width:70px;text-align:right;font-variant-numeric:tabular-nums;}
+    .search-nav{background:#fff;border:1px solid var(--line2);color:var(--muted);width:30px;height:30px;border-radius:7px;cursor:pointer;font-size:.85rem;line-height:1;transition:border-color .14s,color .14s;display:flex;align-items:center;justify-content:center;}
+    .search-nav:hover:not(:disabled){border-color:var(--teal);color:var(--teal-dark);}
+    .search-nav:disabled{opacity:.4;cursor:not-allowed;}
+
+    .inv-summary{font-size:.8rem;color:var(--text);line-height:1.6;margin-bottom:1rem;padding:.85rem 1.05rem;background:rgba(218,26,80,.05);border:1px solid rgba(218,26,80,.2);border-radius:10px;}
+    .inv-summary strong{color:var(--red);font-weight:700;}
+    .inv-controls{display:flex;gap:.6rem;align-items:center;margin-bottom:.9rem;flex-wrap:wrap;}
+    .inv-toggle-all{font-size:.68rem;color:var(--teal-dark);background:none;border:none;cursor:pointer;font-family:'Sora',sans-serif;font-weight:600;padding:0;}
+    .inv-toggle-all:hover{text-decoration:underline;}
+    .inv-filter{background:var(--surface2);border:1px solid var(--line2);color:var(--text);font-family:'Sora',sans-serif;font-size:.74rem;padding:.4rem .7rem;border-radius:8px;outline:none;flex:1;min-width:180px;}
+    .inv-filter:focus{border-color:var(--teal);background:#fff;}
+    .inv-group{border:1px solid var(--line2);border-radius:10px;margin-bottom:.65rem;overflow:hidden;background:#fff;}
+    .inv-group-head{display:flex;align-items:center;gap:.7rem;padding:.75rem 1rem;cursor:pointer;background:var(--surface2);transition:background .12s;}
+    .inv-group-head:hover{background:var(--surface3);}
+    .inv-chevron{color:var(--muted2);font-size:.7rem;transition:transform .18s;flex-shrink:0;}
+    .inv-group.open .inv-chevron{transform:rotate(90deg);}
+    .inv-container-name{font-family:'SF Mono',Menlo,monospace;font-size:.76rem;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .inv-count-badge{background:rgba(218,26,80,.1);color:var(--red);font-size:.6rem;font-weight:700;letter-spacing:.04em;padding:.16rem .5rem;border-radius:5px;flex-shrink:0;}
+    .inv-path{font-family:'SF Mono',Menlo,monospace;font-size:.62rem;color:var(--muted2);margin-left:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40%;}
+    .inv-group-body{display:none;padding:.4rem 0;}
+    .inv-group.open .inv-group-body{display:block;}
+    .inv-item{display:flex;gap:.7rem;align-items:flex-start;padding:.35rem 1rem;border-top:1px solid var(--line);}
+    .inv-item:first-child{border-top:none;}
+    .inv-type{font-size:.56rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted2);background:var(--surface2);border:1px solid var(--line);border-radius:5px;padding:.14rem .45rem;flex-shrink:0;min-width:78px;text-align:center;}
+    .inv-text{font-size:.76rem;color:var(--text);line-height:1.5;word-break:break-word;}
+    .inv-trunc{font-size:.72rem;color:var(--muted2);font-style:italic;padding:.5rem 1rem;}
+
+    .lost-item{border-left:3px solid var(--red);background:var(--surface2);border-radius:10px;padding:.85rem 1.1rem;margin-bottom:.65rem;}
+    .lost-item .lbl{font-family:'SF Mono',Menlo,monospace;color:var(--ink);font-size:.76rem;font-weight:600;}
+    .lost-item .meta{font-size:.68rem;color:var(--muted2);margin-top:.2rem;}
+    .lost-item .prev{color:var(--muted);font-size:.74rem;margin-top:.4rem;line-height:1.55;}
+
+    .ai-finding{border-left:3px solid var(--amber);background:var(--surface2);border-radius:10px;padding:.9rem 1.1rem;margin-bottom:.75rem;}
+    .ai-finding.vital-critical{border-left-color:var(--red);}
+    .ai-finding.vital-important{border-left-color:var(--amber);}
+    .ai-finding.vital-minor{border-left-color:var(--teal);}
+    .ai-finding.vital-irrelevant{border-left-color:var(--muted2);}
+    .ai-finding .fhead{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;}
+    .ai-finding .lbl{font-family:'SF Mono',Menlo,monospace;color:var(--ink);font-size:.76rem;font-weight:600;}
+    .ai-finding .purpose{color:var(--teal-dark);font-size:.74rem;}
+    .ai-finding .reason{color:var(--muted);font-size:.76rem;margin-top:.4rem;line-height:1.55;}
+    .ai-finding .fix{color:var(--text);font-size:.76rem;margin-top:.35rem;line-height:1.55;}
+    .ai-finding .fix::before{content:'\2192  ';color:var(--teal-dark);}
+
+    .impact-banner{border-radius:12px;padding:1.15rem 1.3rem;margin-bottom:1rem;border:1px solid var(--line2);}
+    .impact-banner .impact-badge{display:inline-block;font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:.25rem .6rem;border-radius:6px;margin-bottom:.6rem;}
+    .impact-banner .impact-verdict{font-size:.86rem;line-height:1.7;color:var(--text);font-weight:400;}
+    .impact-critical{background:rgba(218,26,80,.07);border-color:rgba(218,26,80,.35);}
+    .impact-critical .impact-badge{background:var(--red);color:#fff;}
+    .impact-high{background:rgba(218,26,80,.05);border-color:rgba(218,26,80,.25);}
+    .impact-high .impact-badge{background:rgba(218,26,80,.14);color:var(--red);}
+    .impact-moderate{background:rgba(232,168,40,.07);border-color:rgba(232,168,40,.3);}
+    .impact-moderate .impact-badge{background:rgba(232,168,40,.18);color:#a9770f;}
+    .impact-low{background:rgba(1,198,163,.06);border-color:rgba(1,198,163,.3);}
+    .impact-low .impact-badge{background:rgba(1,198,163,.15);color:var(--teal-dark);}
+    .impact-none{background:var(--surface2);border-color:var(--line2);}
+    .impact-none .impact-badge{background:rgba(1,198,163,.15);color:var(--teal-dark);}
+
+    .seo-hits{background:#fff;border:1px solid var(--line2);border-radius:10px;padding:.9rem 1.1rem;margin-bottom:.75rem;}
+    .seo-hits-title{font-size:.58rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:.6rem;}
+    .seo-hit{display:flex;align-items:center;gap:.6rem;padding:.28rem 0;border-bottom:1px solid var(--line);}
+    .seo-hit:last-child{border-bottom:none;}
+    .seo-hit-what{font-size:.78rem;color:var(--ink);font-weight:500;}
+    .seo-hit-count{margin-left:auto;font-family:'SF Mono',Menlo,monospace;font-size:.72rem;color:var(--muted2);}
+
+    .sec-heading{font-size:.58rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:1.1rem 0 .65rem;}
+
+    .reduction{border-left:3px solid var(--teal);background:var(--surface2);border-radius:10px;padding:.9rem 1.1rem;margin-bottom:.65rem;}
+    .reduction .fhead{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;}
+    .reduction .lbl{font-family:'SF Mono',Menlo,monospace;color:var(--ink);font-size:.76rem;font-weight:600;}
+    .reduction .saving{margin-left:auto;font-size:.68rem;color:#a9770f;font-weight:700;}
+    .reduction .action{color:var(--text);font-size:.76rem;margin-top:.4rem;line-height:1.55;}
+    .reduction .action::before{content:'\2192  ';color:var(--teal-dark);}
+
+    .ai-lost{background:rgba(218,26,80,.05);border:1px solid rgba(218,26,80,.22);border-radius:10px;padding:1rem 1.2rem;font-size:.8rem;line-height:1.7;color:var(--text);margin-bottom:.75rem;font-weight:400;}
+    .ai-lost strong{color:var(--red);font-weight:700;}
+
+    .loading-state{padding:3rem 2rem;text-align:center;color:var(--muted);font-size:.88rem;}
+    .spinner{width:22px;height:22px;border:2.5px solid var(--line2);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto .8rem;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .error-msg{padding:1rem 1.4rem;background:rgba(218,26,80,.06);border:1px solid rgba(218,26,80,.25);border-radius:10px;color:var(--red);font-size:.82rem;margin-top:1rem;font-weight:500;}
+    .hidden{display:none !important;}
+    .keyhint{font-size:.68rem;color:var(--muted2);margin-top:.6rem;}
+    .keyhint code{color:#a9770f;font-family:'SF Mono',Menlo,monospace;}
+
+    footer{border-top:1px solid var(--line);padding:1.8rem 2.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;max-width:1240px;margin:0 auto;}
+    .footer-left{display:flex;align-items:center;gap:.8rem;color:var(--muted2);}
+    .footer-left .paramount-logo{height:24px;width:auto;opacity:.55;}
+    .footer-text{font-size:.7rem;color:var(--muted2);letter-spacing:.03em;}
+    .footer-text a{color:var(--teal-dark);text-decoration:none;font-weight:500;}
+
+    @media(max-width:780px){.stat-row{grid-template-columns:repeat(2,1fr);}.main-wrap{padding:1.5rem;}.topbar-label{display:none;}.hero-title{font-size:2.1rem;}}
+    @media(max-width:640px){.topbar{padding:0 1.25rem;}.hero{padding:2.4rem 1.25rem;}.main-wrap{padding:1.5rem;}}
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-logo"><svg viewBox="0 0 139 47" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="lt-top" class="paramount-logo"><title id="lt-top">Paramount Digital</title><g><path class="logo-tile tile-1" d="M2.14973 24.2673H7.69928C8.82722 24.2673 9.74163 25.1829 9.74163 26.3124V31.9093C9.74163 33.0388 8.82722 33.9544 7.69928 33.9544H2.14973C1.0218 33.9544 0.107422 33.0388 0.107422 31.9093V26.3124C0.107422 25.1829 1.0218 24.2673 2.14973 24.2673Z" fill="#01C6A3" stroke="#DEDEDE" stroke-width="0.238183"></path><path class="logo-tile tile-2" d="M19.728 36.3229H14.1786C13.0506 36.3229 12.1362 37.2385 12.1362 38.368V43.9653C12.1362 45.0948 13.0506 46.0105 14.1786 46.0105H19.728C20.856 46.0105 21.7704 45.0948 21.7704 43.9653V38.368C21.7704 37.2385 20.856 36.3229 19.728 36.3229Z" fill="#008475" stroke="#DEDEDE" stroke-width="0.238183"></path><path class="logo-tile tile-3" d="M19.728 24.2672H14.1786C13.0506 24.2672 12.1362 25.1829 12.1362 26.3124V31.9096C12.1362 33.0392 13.0506 33.9548 14.1786 33.9548H19.728C20.856 33.9548 21.7704 33.0392 21.7704 31.9096V26.3124C21.7704 25.1829 20.856 24.2672 19.728 24.2672Z" fill="#01C6A3" stroke="#DEDEDE" stroke-width="0.238183"></path><path class="logo-tile tile-4" d="M19.728 12.2115H14.1786C13.0506 12.2115 12.1362 13.1271 12.1362 14.2567V19.8539C12.1362 20.9834 13.0506 21.8991 14.1786 21.8991H19.728C20.856 21.8991 21.7704 20.9834 21.7704 19.8539V14.2567C21.7704 13.1271 20.856 12.2115 19.728 12.2115Z" fill="#E8A828" stroke="#DEDEDE" stroke-width="0.238183"></path><path class="logo-tile tile-5" d="M31.7183 0.155762H26.1688C25.0409 0.155762 24.1265 1.07142 24.1265 2.20093V7.7982C24.1265 8.92771 25.0409 9.84337 26.1688 9.84337H31.7183C32.8462 9.84337 33.7606 8.92771 33.7606 7.7982V2.20093C33.7606 1.07142 32.8462 0.155762 31.7183 0.155762Z" fill="#DA1A50" stroke="#DEDEDE" stroke-width="0.238183"></path><path class="logo-tile tile-6" d="M31.7183 12.2115H26.1688C25.0409 12.2115 24.1265 13.1271 24.1265 14.2567V19.8539C24.1265 20.9834 25.0409 21.8991 26.1688 21.8991H31.7183C32.8462 21.8991 33.7606 20.9834 33.7606 19.8539V14.2567C33.7606 13.1271 32.8462 12.2115 31.7183 12.2115Z" fill="#E8A828" stroke="#DEDEDE" stroke-width="0.238183"></path><path class="logo-tile tile-7" d="M31.7183 24.2672H26.1688C25.0409 24.2672 24.1265 25.1829 24.1265 26.3124V31.9096C24.1265 33.0392 25.0409 33.9548 26.1688 33.9548H31.7183C32.8462 33.9548 33.7606 33.0392 33.7606 31.9096V26.3124C33.7606 25.1829 32.8462 24.2672 31.7183 24.2672Z" fill="#01C6A3" stroke="#DEDEDE" stroke-width="0.238183"></path><path class="logo-tile tile-8" d="M31.7183 36.3229H26.1688C25.0409 36.3229 24.1265 37.2385 24.1265 38.368V43.9653C24.1265 45.0948 25.0409 46.0105 26.1688 46.0105H31.7183C32.8462 46.0105 33.7606 45.0948 33.7606 43.9653V38.368C33.7606 37.2385 32.8462 36.3229 31.7183 36.3229Z" fill="#008475" stroke="#DEDEDE" stroke-width="0.238183"></path><path d="M51.9001 4.78326C51.9001 5.59526 51.7055 6.35649 51.3161 7.06698C50.9412 7.77748 50.3426 8.35022 49.5206 8.78521C48.7131 9.2202 47.6892 9.43766 46.4489 9.43766H43.918V15.2667H40.8896V0.0853271H46.4489C47.6171 0.0853271 48.6121 0.288325 49.4341 0.694319C50.2561 1.10031 50.869 1.65856 51.2728 2.36904C51.691 3.07954 51.9001 3.88428 51.9001 4.78326ZM46.3191 6.97999C47.1556 6.97999 47.7757 6.79149 48.1795 6.41449C48.5833 6.02299 48.7851 5.47926 48.7851 4.78326C48.7851 3.30429 47.9631 2.5648 46.3191 2.5648H43.918V6.97999H46.3191Z" fill="currentColor"></path><path d="M51.8574 9.81983C51.8574 8.78632 52.0593 7.8697 52.4632 7.06995C52.8793 6.2702 53.436 5.65501 54.1335 5.22437C54.8433 4.79374 55.6325 4.57843 56.5014 4.57843C57.2601 4.57843 57.9209 4.73222 58.4838 5.03982C59.0589 5.34741 59.5178 5.73498 59.8605 6.20252V4.74453H62.4486V14.9689H59.8605V13.4741C59.53 13.9539 59.0712 14.3538 58.4838 14.6737C57.9086 14.9813 57.2417 15.1351 56.4831 15.1351C55.6264 15.1351 54.8433 14.9136 54.1335 14.4707C53.436 14.0278 52.8793 13.4064 52.4632 12.6067C52.0593 11.7946 51.8574 10.8657 51.8574 9.81983ZM59.8605 9.85679C59.8605 9.22925 59.7381 8.69405 59.4933 8.25111C59.2486 7.79587 58.9182 7.45136 58.5022 7.21759C58.0861 6.97152 57.6395 6.84848 57.1622 6.84848C56.685 6.84848 56.2444 6.96536 55.8406 7.19913C55.4368 7.4329 55.1063 7.77741 54.8494 8.23265C54.6047 8.67559 54.4823 9.20467 54.4823 9.81983C54.4823 10.4351 54.6047 10.9764 54.8494 11.4439C55.1063 11.8992 55.4368 12.2498 55.8406 12.4959C56.2567 12.742 56.6971 12.8651 57.1622 12.8651C57.6395 12.8651 58.0861 12.7481 58.5022 12.5144C58.9182 12.2683 59.2486 11.9238 59.4933 11.4808C59.7381 11.0256 59.8605 10.4842 59.8605 9.85679Z" fill="currentColor"></path><path d="M70.0645 9.81983C70.0645 8.78632 70.2664 7.8697 70.6702 7.06995C71.0863 6.2702 71.6431 5.65501 72.3406 5.22437C73.0503 4.79374 73.8396 4.57843 74.7084 4.57843C75.4671 4.57843 76.1279 4.73222 76.6909 5.03982C77.266 5.34741 77.7249 5.73498 78.0675 6.20252V4.74453H80.6556V14.9689H78.0675V13.4741C77.7371 13.9539 77.2782 14.3538 76.6909 14.6737C76.1157 14.9813 75.4488 15.1351 74.6901 15.1351C73.8335 15.1351 73.0503 14.9136 72.3406 14.4707C71.6431 14.0278 71.0863 13.4064 70.6702 12.6067C70.2664 11.7946 70.0645 10.8657 70.0645 9.81983ZM78.0675 9.85679C78.0675 9.22925 77.9451 8.69405 77.7004 8.25111C77.4556 7.79587 77.1252 7.45136 76.7092 7.21759C76.2931 6.97152 75.8465 6.84848 75.3692 6.84848C74.892 6.84848 74.4514 6.96536 74.0476 7.19913C73.6438 7.4329 73.3134 7.77741 73.0565 8.23265C72.8117 8.67559 72.6893 9.20467 72.6893 9.81983C72.6893 10.4351 72.8117 10.9764 73.0565 11.4439C73.3134 11.8992 73.6438 12.2498 74.0476 12.4959C74.4637 12.742 74.9043 12.8651 75.3692 12.8651C75.8465 12.8651 76.2931 12.7481 76.7092 12.5144C77.1252 12.2683 77.4556 11.9238 77.7004 11.4808C77.9451 11.0256 78.0675 10.4842 78.0675 9.85679Z" fill="currentColor"></path><path d="M81.5464 28.8716C81.5464 27.8307 81.7497 26.9075 82.1565 26.102C82.5754 25.2965 83.1362 24.6769 83.8388 24.2431C84.5537 23.8094 85.3486 23.5925 86.2236 23.5925C86.9878 23.5925 87.6534 23.7474 88.2203 24.0572C88.7996 24.367 89.2617 24.7574 89.6069 25.2283V23.7598H92.2138V34.0577H89.6069V32.5521C89.2741 33.0354 88.8118 33.4381 88.2203 33.7603C87.641 34.0701 86.9693 34.225 86.2051 34.225C85.3424 34.225 84.5537 34.0019 83.8388 33.5558C83.1362 33.1097 82.5754 32.4839 82.1565 31.6784C81.7497 30.8605 81.5464 29.925 81.5464 28.8716ZM89.6069 28.9088C89.6069 28.2768 89.4836 27.7377 89.2371 27.2916C88.9906 26.8331 88.6578 26.4861 88.2388 26.2507C87.8197 26.0028 87.3699 25.8789 86.8892 25.8789C86.4085 25.8789 85.9648 25.9966 85.5581 26.232C85.1514 26.4675 84.8186 26.8145 84.5598 27.273C84.3133 27.7191 84.19 28.2519 84.19 28.8716C84.19 29.4912 84.3133 30.0364 84.5598 30.5073C84.8186 30.9658 85.1514 31.3191 85.5581 31.5669C85.9771 31.8147 86.4209 31.9386 86.8892 31.9386C87.3699 31.9386 87.8197 31.821 88.2388 31.5855C88.6578 31.3376 88.9906 30.9907 89.2371 30.5446C89.4836 30.086 89.6069 29.5407 89.6069 28.9088Z" fill="currentColor"></path><path d="M46.1876 19.0687C47.7571 19.0687 49.1338 19.3771 50.318 19.994C51.5165 20.6108 52.4367 21.493 53.0787 22.6406C53.735 23.7739 54.0631 25.0937 54.0631 26.5999C54.0631 28.1062 53.735 29.4259 53.0787 30.5592C52.4367 31.6781 51.5165 32.546 50.318 33.1629C49.1338 33.7797 47.7571 34.0881 46.1876 34.0881H40.9658V19.0687H46.1876ZM46.0806 31.5275C47.65 31.5275 48.8627 31.0971 49.7188 30.2364C50.5748 29.3757 51.0028 28.1636 51.0028 26.5999C51.0028 25.0363 50.5748 23.817 49.7188 22.9419C48.8627 22.0525 47.65 21.6078 46.0806 21.6078H43.9619V31.5275H46.0806Z" fill="currentColor"></path><path d="M105.143 15.1351C104.163 15.1351 103.282 14.9198 102.5 14.4891C101.716 14.0462 101.098 13.4248 100.646 12.6251C100.206 11.8254 99.9844 10.9025 99.9844 9.85679C99.9844 8.81093 100.211 7.88814 100.664 7.0884C101.129 6.28865 101.759 5.67347 102.555 5.24283C103.35 4.79989 104.237 4.57843 105.216 4.57843C106.195 4.57843 107.082 4.79989 107.878 5.24283C108.673 5.67347 109.297 6.28865 109.75 7.0884C110.215 7.88814 110.447 8.81093 110.447 9.85679C110.447 10.9025 110.209 11.8254 109.732 12.6251C109.267 13.4248 108.63 14.0462 107.823 14.4891C107.027 14.9198 106.134 15.1351 105.143 15.1351ZM105.143 12.8835C105.608 12.8835 106.042 12.7728 106.446 12.5512C106.862 12.3175 107.193 11.973 107.437 11.5178C107.682 11.0625 107.804 10.5088 107.804 9.85679C107.804 8.88475 107.547 8.14038 107.034 7.62361C106.532 7.09456 105.914 6.83002 105.18 6.83002C104.445 6.83002 103.828 7.09456 103.326 7.62361C102.836 8.14038 102.591 8.88475 102.591 9.85679C102.591 10.8288 102.83 11.5793 103.307 12.1084C103.797 12.6251 104.409 12.8835 105.143 12.8835Z" fill="currentColor"></path><path d="M121.033 4.74457V14.969H118.445V13.6772C118.115 14.12 117.68 14.4707 117.142 14.7291C116.616 14.9752 116.041 15.0982 115.416 15.0982C114.621 15.0982 113.917 14.9322 113.306 14.5999C112.694 14.2554 112.21 13.7571 111.855 13.105C111.512 12.4406 111.342 11.6532 111.342 10.7426V4.74457H113.911V10.3735C113.911 11.1856 114.113 11.8131 114.517 12.256C114.921 12.6866 115.471 12.902 116.169 12.902C116.878 12.902 117.435 12.6866 117.84 12.256C118.243 11.8131 118.445 11.1856 118.445 10.3735V4.74457H121.033Z" fill="currentColor"></path><path d="M127.875 4.59692C129.086 4.59692 130.065 4.98449 130.812 5.75963C131.558 6.52247 131.931 7.59289 131.931 8.97092V14.969H129.361V9.32154C129.361 8.50953 129.16 7.88819 128.756 7.45755C128.352 7.01462 127.802 6.79315 127.104 6.79315C126.394 6.79315 125.831 7.01462 125.415 7.45755C125.012 7.88819 124.809 8.50953 124.809 9.32154V14.969H122.24V4.74457H124.809V6.01801C125.152 5.57508 125.587 5.23057 126.113 4.98449C126.651 4.72611 127.238 4.59692 127.875 4.59692Z" fill="currentColor"></path><path d="M136.334 6.86697V11.8131C136.334 12.1576 136.413 12.4098 136.572 12.5698C136.743 12.7174 137.025 12.7912 137.417 12.7912H138.609V14.969H136.994C134.828 14.969 133.745 13.9109 133.745 11.7947V6.86697H132.534V4.74456H133.745V2.21613H136.334V4.74456H138.609V6.86697H136.334Z" fill="currentColor"></path><path d="M94.7518 4.59692C96.0001 4.59692 97.0038 4.98449 97.7628 5.75963C98.5337 6.52247 98.9191 7.59289 98.9191 8.97092V14.969H96.3494V9.32154C96.3494 8.52183 96.1472 7.91279 95.7437 7.49447C95.3394 7.06384 94.7888 6.84851 94.0911 6.84851C93.3943 6.84851 92.8374 7.06384 92.4213 7.49447C92.0169 7.91279 91.8156 8.52183 91.8156 9.32154V14.969H89.2455V9.32154C89.2455 8.52183 89.0436 7.91279 88.6397 7.49447C88.2359 7.06384 87.6852 6.84851 86.9878 6.84851C86.278 6.84851 85.7152 7.06384 85.2991 7.49447C84.8952 7.91279 84.6933 8.52183 84.6933 9.32154V14.969H82.1235V4.74457H84.6933V5.9811C85.0238 5.55046 85.4459 5.21211 85.9598 4.96604C86.4861 4.71996 87.0612 4.59692 87.6853 4.59692C88.4807 4.59692 89.1904 4.76918 89.8145 5.11368C90.4383 5.44589 90.9221 5.92573 91.265 6.55323C91.5954 5.96264 92.072 5.48895 92.6966 5.13214C93.3329 4.77533 94.018 4.59692 94.7518 4.59692Z" fill="currentColor"></path><path d="M66.4863 6.33176C66.8166 5.79039 67.245 5.36591 67.7711 5.05832C68.3096 4.75072 68.9214 4.59692 69.6067 4.59692V7.30991H68.9275C68.1199 7.30991 67.508 7.50062 67.092 7.88203C66.6882 8.26346 66.4863 8.92786 66.4863 9.87523V14.969H63.9165V4.74457H66.4863V6.33176Z" fill="currentColor"></path><path d="M57.9638 23.7598V34.0577H55.3755V23.7598H57.9638Z" fill="currentColor"></path><path d="M73.618 23.7598V34.0577H71.0298V23.7598H73.618Z" fill="currentColor"></path><path d="M96.2801 20.3025V34.0578H93.6924V20.3025H96.2801Z" fill="currentColor"></path><path d="M78.6657 25.8974V30.8792C78.6657 31.2261 78.7458 31.4801 78.9061 31.6412C79.0786 31.79 79.362 31.8643 79.7565 31.8643H80.9581V34.0577H79.3313C77.1498 34.0577 76.059 32.992 76.059 30.8606V25.8974H74.8389V23.7598H76.059V21.2133H78.6657V23.7598H80.9581V25.8974H78.6657Z" fill="currentColor"></path><path d="M63.86 23.5925C64.6241 23.5925 65.2958 23.7474 65.875 24.0572C66.4543 24.3547 66.9104 24.745 67.2431 25.2283V23.7598H69.8499V34.1321C69.8499 35.0863 69.6588 35.9351 69.2767 36.6787C68.8947 37.4346 68.3215 38.0294 67.5574 38.4631C66.7932 38.9092 65.8689 39.1323 64.7843 39.1323C63.33 39.1323 62.1345 38.7915 61.1978 38.1099C60.2734 37.4283 59.7496 36.499 59.6263 35.3217H62.1961C62.3317 35.7926 62.6213 36.1644 63.065 36.437C63.521 36.722 64.0695 36.8645 64.7104 36.8645C65.4622 36.8645 66.0722 36.6353 66.5406 36.1768C67.0089 35.7306 67.2431 35.0491 67.2431 34.1321V32.5335C66.9104 33.0168 66.4482 33.4195 65.8566 33.7417C65.2773 34.0639 64.6117 34.225 63.86 34.225C62.9972 34.225 62.2084 34.0019 61.4935 33.5558C60.7787 33.1097 60.2118 32.4839 59.7928 31.6784C59.386 30.8605 59.1826 29.925 59.1826 28.8716C59.1826 27.8307 59.386 26.9075 59.7928 26.102C60.2118 25.2965 60.7725 24.6769 61.475 24.2431C62.1899 23.8094 62.9849 23.5925 63.86 23.5925ZM67.2431 28.9088C67.2431 28.2768 67.1199 27.7377 66.8734 27.2916C66.6269 26.8331 66.2941 26.4861 65.875 26.2507C65.456 26.0028 65.0062 25.8789 64.5255 25.8789C64.0448 25.8789 63.6011 25.9966 63.1944 26.232C62.7877 26.4675 62.4549 26.8145 62.1961 27.273C61.9496 27.7191 61.8263 28.2519 61.8263 28.8716C61.8263 29.4912 61.9496 30.0364 62.1961 30.5073C62.4549 30.9658 62.7877 31.3191 63.1944 31.5669C63.6135 31.8147 64.0571 31.9386 64.5255 31.9386C65.0062 31.9386 65.456 31.821 65.875 31.5855C66.2941 31.3376 66.6269 30.9907 66.8734 30.5446C67.1199 30.086 67.2431 29.5407 67.2431 28.9088Z" fill="currentColor"></path><path d="M57.6674 19.893H55.6718C55.5082 19.893 55.3755 20.0259 55.3755 20.1897V22.2368C55.3755 22.4007 55.5082 22.5336 55.6718 22.5336H57.6674C57.8311 22.5336 57.9637 22.4007 57.9637 22.2368V20.1897C57.9637 20.0259 57.8311 19.893 57.6674 19.893Z" fill="currentColor"></path><path d="M73.3217 19.893H71.3261C71.1624 19.893 71.0298 20.0259 71.0298 20.1897V22.2368C71.0298 22.4007 71.1624 22.5336 71.3261 22.5336H73.3217C73.4854 22.5336 73.618 22.4007 73.618 22.2368V20.1897C73.618 20.0259 73.4854 19.893 73.3217 19.893Z" fill="currentColor"></path></g></svg></div>
+    <div class="topbar-right">
+      <span class="topbar-label">2MB Limit Checker</span>
+      <div class="topbar-dot"></div>
+      <span class="topbar-date" id="updated-date"></span>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-kicker">Technical SEO</div>
+      <h1 class="hero-title">See what Google <span class="accent">cuts off</span></h1>
+      <p class="hero-sub">Google truncates fetched HTML at 2,097,152 bytes. This tool measures where that cut lands and shows which page sections are kept, partially clipped, or lost entirely &mdash; with an optional analysis of what could be trimmed.</p>
+    </div>
+  </section>
+
+  <div class="main-wrap">
+    <div class="panel">
+      <div class="panel-header"><div class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div><span class="panel-title">Input</span></div>
+      <div class="panel-body">
+        <label class="field-label" for="source">Page URL or pasted HTML</label>
+        <textarea id="source" placeholder="https://example.com/big-page  &mdash;  or paste raw HTML here"></textarea>
+        <div class="actions">
+          <button class="btn-run" id="run-btn">Run check</button>
+          <button class="btn-secondary" id="ai-btn" disabled>Run analysis</button>
+        </div>
+        {% if not has_key %}<div class="keyhint">Analysis disabled &mdash; start the script with <code>set OPENAI_API_KEY=sk-...</code> (Windows) or <code>export OPENAI_API_KEY=sk-...</code> (Mac/Linux) to enable it.</div>{% endif %}
+        <div id="input-error"></div>
+      </div>
+    </div>
+
+    <div id="results" class="hidden">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14 L16 10"/><circle cx="12" cy="14" r="8"/><path d="M12 6v0M4 14h0M20 14h0"/></svg></div><span class="panel-title">Size Summary &mdash; <span class="sub" id="src-label"></span></span></div>
+        <div class="panel-body">
+          <div class="stat-row">
+            <div class="stat"><div class="stat-num" id="s-total"></div><div class="stat-label">Total size</div></div>
+            <div class="stat"><div class="stat-num" id="s-pct"></div><div class="stat-label">Of 2MB limit</div></div>
+            <div class="stat"><div class="stat-num" id="s-over"></div><div class="stat-label">Over by</div></div>
+            <div class="stat"><div class="stat-num" id="s-status"></div><div class="stat-label">Verdict</div></div>
+          </div>
+          <div class="meter"><div class="meter-fill" id="meter-fill"></div><div class="meter-mark"></div></div>
+          <div class="meter-label" id="meter-label"></div>
+          <div id="flags"></div>
+        </div>
+      </div>
+
+      <div class="panel" id="cutline-panel">
+        <div class="panel-header"><div class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></div><span class="panel-title">The Cut Point</span></div>
+        <div class="panel-body">
+          <div class="cutline"><span class="kept" id="cut-before"></span><span class="marker"> &#9668; 2MB CUT &#9658; </span><span class="lost" id="cut-after"></span></div>
+        </div>
+      </div>
+
+      <div class="panel" id="preview-panel">
+        <div class="panel-header"><div class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/></svg></div><span class="panel-title">Google's View &mdash; rendered up to the cut</span></div>
+        <div class="panel-body">
+          <p class="preview-note">A visual approximation of the page as Googlebot fetches it &mdash; only the HTML up to 2MB is rendered, so anything below the cut is missing. External CSS &amp; images load from the live site, so it won't be pixel-perfect and scripts are disabled for safety.</p>
+          <div class="preview-actions">
+            <button class="btn-secondary" id="preview-btn">Render Google's view</button>
+            <span class="preview-meta" id="preview-meta"></span>
+          </div>
+          <div id="preview-wrap" class="hidden">
+            <div class="preview-frame-bar"><span class="dotrow"><i></i><i></i><i></i></span><span id="preview-url" class="preview-url"></span></div>
+            <iframe id="preview-frame" class="preview-frame" sandbox="" referrerpolicy="no-referrer" title="Rendered preview up to 2MB"></iframe>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="source-panel">
+        <div class="panel-header"><div class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div><span class="panel-title">Full vs Snipped HTML &mdash; side by side</span></div>
+        <div class="panel-body">
+          <p class="preview-note">Compare the full fetched HTML against what survives the 2MB cut. The full side dims everything below the cut; the snipped side is exactly what Googlebot keeps. Very large pages are trimmed near the cut for performance.</p>
+          <div class="preview-actions">
+            <button class="btn-secondary" id="source-btn">Load source comparison</button>
+            <label class="collapse-toggle"><input type="checkbox" id="source-sync" checked /> Sync scroll</label>
+            <label class="collapse-toggle"><input type="checkbox" id="source-wrap-toggle" /> Wrap lines</label>
+            <span class="preview-meta" id="source-meta"></span>
+          </div>
+          <div id="source-wrap" class="hidden">
+            <div class="source-search">
+              <div class="search-input-wrap">
+                <input type="text" id="source-search" placeholder="Search the HTML (e.g. ld+json, canonical, &lt;h1)" autocomplete="off" spellcheck="false" />
+              </div>
+              <label class="collapse-toggle"><input type="checkbox" id="search-case" /> Match case</label>
+              <span class="search-count" id="search-count"></span>
+              <button class="search-nav" id="search-prev" title="Previous match" disabled>&#8593;</button>
+              <button class="search-nav" id="search-next" title="Next match" disabled>&#8595;</button>
+            </div>
+            <div class="source-grid">
+              <div class="source-col">
+                <div class="source-col-head"><span class="source-col-name">Full HTML</span><span class="source-col-tag full">as fetched</span></div>
+                <pre class="source-pre" id="source-full"></pre>
+              </div>
+              <div class="source-col">
+                <div class="source-col-head"><span class="source-col-name">Snipped HTML</span><span class="source-col-tag snip">Google keeps</span></div>
+                <pre class="source-pre" id="source-snip"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header"><div class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg></div><span class="panel-title">Element Breakdown</span></div>
+        <div class="panel-body" style="padding:0;">
+          <div class="table-controls">
+            <span class="ctrl-label">Depth</span>
+            <div class="filter-group" id="depth-filters">
+              <button class="filter-btn active" data-depth="all">All</button>
+              <button class="filter-btn" data-depth="0">Top level</button>
+              <button class="filter-btn" data-depth="1">+1</button>
+              <button class="filter-btn" data-depth="2">+2</button>
+            </div>
+            <div class="filter-pipe"></div>
+            <span class="ctrl-label">Show</span>
+            <div class="filter-group" id="status-filters">
+              <button class="filter-btn active" data-status="all">All</button>
+              <button class="filter-btn" data-status="partial">Clipped</button>
+              <button class="filter-btn" data-status="cut">Lost</button>
+            </div>
+            <label class="collapse-toggle"><input type="checkbox" id="collapse-repeats" checked /> Collapse repeated siblings</label>
+            <span class="row-count" id="row-count"></span>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Element</th><th>Context</th><th>Preview</th><th>Size</th><th class="barcell">Retained</th><th>Status</th></tr></thead>
+              <tbody id="blocks-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel hidden" id="lost-panel">
+        <div class="panel-header"><div class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></div><span class="panel-title">What's Being Lost</span></div>
+        <div class="panel-body">
+          <div id="inventory-summary" class="inv-summary"></div>
+          <div id="inventory"></div>
+          <div id="lost-body" style="margin-top:1.2rem;"></div>
+        </div>
+      </div>
+
+      <div class="panel hidden" id="ai-panel">
+        <div class="panel-header"><div class="panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><span class="panel-title">Section Analysis</span></div>
+        <div class="panel-body" id="ai-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-left"><svg viewBox="0 0 139 47" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="lt-foot" class="paramount-logo"><title id="lt-foot">Paramount Digital</title><g><path class="logo-tile tile-1" d="M2.14973 24.2673H7.69928C8.82722 24.2673 9.74163 25.1829 9.74163 26.3124V31.9093C9.74163 33.0388 8.82722 33.9544 7.69928 33.9544H2.14973C1.0218 33.9544 0.107422 33.0388 0.107422 31.9093V26.3124C0.107422 25.1829 1.0218 24.2673 2.14973 24.2673Z" fill="#01C6A3" stroke="#DEDEDE" stroke-width="0.238183"></path><path class="logo-tile tile-2" d="M19.728 36.3229H14.1786C13.0506 36.3229 12.1362 37.2385 12.1362 38.368V43.9653C12.1362 45.0948 13.0506 46.0105 14.1786 46.0105H19.728C20.856 46.0105 21.7704 45.0948 21.7704 43.9653V38.368C21.7704 37.2385 20.856 36.3229 19.728 36.3229Z" fill="#008475" stroke="#DEDEDE" stroke-width="0.238183"></path><path class="logo-tile tile-3" d="M19.728 24.2672H14.1786C13.0506 24.2672 12.1362 25.1829 12.1362 26.3124V31.9096C12.1362 33.0392 13.0506 33.9548 14.1786 33.9548H19.728C20.856 33.9548 21.7704 33.0392 21.7704 31.9096V26.3124C21.7704 25.1829 20.856 24.2672 19.728 24.2672Z" fill="#01C6A3" stroke="#DEDEDE" stroke-width="0.238183"></path><path class="logo-tile tile-4" d="M19.728 12.2115H14.1786C13.0506 12.2115 12.1362 13.1271 12.1362 14.2567V19.8539C12.1362 20.9834 13.0506 21.8991 14.1786 21.8991H19.728C20.856 21.8991 21.7704 20.9834 21.7704 19.8539V14.2567C21.7704 13.1271 20.856 12.2115 19.728 12.2115Z" fill="#E8A828" stroke="#DEDEDE" stroke-width="0.238183"></path><path class="logo-tile tile-5" d="M31.7183 0.155762H26.1688C25.0409 0.155762 24.1265 1.07142 24.1265 2.20093V7.7982C24.1265 8.92771 25.0409 9.84337 26.1688 9.84337H31.7183C32.8462 9.84337 33.7606 8.92771 33.7606 7.7982V2.20093C33.7606 1.07142 32.8462 0.155762 31.7183 0.155762Z" fill="#DA1A50" stroke="#DEDEDE" stroke-width="0.238183"></path><path class="logo-tile tile-6" d="M31.7183 12.2115H26.1688C25.0409 12.2115 24.1265 13.1271 24.1265 14.2567V19.8539C24.1265 20.9834 25.0409 21.8991 26.1688 21.8991H31.7183C32.8462 21.8991 33.7606 20.9834 33.7606 19.8539V14.2567C33.7606 13.1271 32.8462 12.2115 31.7183 12.2115Z" fill="#E8A828" stroke="#DEDEDE" stroke-width="0.238183"></path><path class="logo-tile tile-7" d="M31.7183 24.2672H26.1688C25.0409 24.2672 24.1265 25.1829 24.1265 26.3124V31.9096C24.1265 33.0392 25.0409 33.9548 26.1688 33.9548H31.7183C32.8462 33.9548 33.7606 33.0392 33.7606 31.9096V26.3124C33.7606 25.1829 32.8462 24.2672 31.7183 24.2672Z" fill="#01C6A3" stroke="#DEDEDE" stroke-width="0.238183"></path><path class="logo-tile tile-8" d="M31.7183 36.3229H26.1688C25.0409 36.3229 24.1265 37.2385 24.1265 38.368V43.9653C24.1265 45.0948 25.0409 46.0105 26.1688 46.0105H31.7183C32.8462 46.0105 33.7606 45.0948 33.7606 43.9653V38.368C33.7606 37.2385 32.8462 36.3229 31.7183 36.3229Z" fill="#008475" stroke="#DEDEDE" stroke-width="0.238183"></path><path d="M51.9001 4.78326C51.9001 5.59526 51.7055 6.35649 51.3161 7.06698C50.9412 7.77748 50.3426 8.35022 49.5206 8.78521C48.7131 9.2202 47.6892 9.43766 46.4489 9.43766H43.918V15.2667H40.8896V0.0853271H46.4489C47.6171 0.0853271 48.6121 0.288325 49.4341 0.694319C50.2561 1.10031 50.869 1.65856 51.2728 2.36904C51.691 3.07954 51.9001 3.88428 51.9001 4.78326ZM46.3191 6.97999C47.1556 6.97999 47.7757 6.79149 48.1795 6.41449C48.5833 6.02299 48.7851 5.47926 48.7851 4.78326C48.7851 3.30429 47.9631 2.5648 46.3191 2.5648H43.918V6.97999H46.3191Z" fill="currentColor"></path><path d="M51.8574 9.81983C51.8574 8.78632 52.0593 7.8697 52.4632 7.06995C52.8793 6.2702 53.436 5.65501 54.1335 5.22437C54.8433 4.79374 55.6325 4.57843 56.5014 4.57843C57.2601 4.57843 57.9209 4.73222 58.4838 5.03982C59.0589 5.34741 59.5178 5.73498 59.8605 6.20252V4.74453H62.4486V14.9689H59.8605V13.4741C59.53 13.9539 59.0712 14.3538 58.4838 14.6737C57.9086 14.9813 57.2417 15.1351 56.4831 15.1351C55.6264 15.1351 54.8433 14.9136 54.1335 14.4707C53.436 14.0278 52.8793 13.4064 52.4632 12.6067C52.0593 11.7946 51.8574 10.8657 51.8574 9.81983ZM59.8605 9.85679C59.8605 9.22925 59.7381 8.69405 59.4933 8.25111C59.2486 7.79587 58.9182 7.45136 58.5022 7.21759C58.0861 6.97152 57.6395 6.84848 57.1622 6.84848C56.685 6.84848 56.2444 6.96536 55.8406 7.19913C55.4368 7.4329 55.1063 7.77741 54.8494 8.23265C54.6047 8.67559 54.4823 9.20467 54.4823 9.81983C54.4823 10.4351 54.6047 10.9764 54.8494 11.4439C55.1063 11.8992 55.4368 12.2498 55.8406 12.4959C56.2567 12.742 56.6971 12.8651 57.1622 12.8651C57.6395 12.8651 58.0861 12.7481 58.5022 12.5144C58.9182 12.2683 59.2486 11.9238 59.4933 11.4808C59.7381 11.0256 59.8605 10.4842 59.8605 9.85679Z" fill="currentColor"></path><path d="M70.0645 9.81983C70.0645 8.78632 70.2664 7.8697 70.6702 7.06995C71.0863 6.2702 71.6431 5.65501 72.3406 5.22437C73.0503 4.79374 73.8396 4.57843 74.7084 4.57843C75.4671 4.57843 76.1279 4.73222 76.6909 5.03982C77.266 5.34741 77.7249 5.73498 78.0675 6.20252V4.74453H80.6556V14.9689H78.0675V13.4741C77.7371 13.9539 77.2782 14.3538 76.6909 14.6737C76.1157 14.9813 75.4488 15.1351 74.6901 15.1351C73.8335 15.1351 73.0503 14.9136 72.3406 14.4707C71.6431 14.0278 71.0863 13.4064 70.6702 12.6067C70.2664 11.7946 70.0645 10.8657 70.0645 9.81983ZM78.0675 9.85679C78.0675 9.22925 77.9451 8.69405 77.7004 8.25111C77.4556 7.79587 77.1252 7.45136 76.7092 7.21759C76.2931 6.97152 75.8465 6.84848 75.3692 6.84848C74.892 6.84848 74.4514 6.96536 74.0476 7.19913C73.6438 7.4329 73.3134 7.77741 73.0565 8.23265C72.8117 8.67559 72.6893 9.20467 72.6893 9.81983C72.6893 10.4351 72.8117 10.9764 73.0565 11.4439C73.3134 11.8992 73.6438 12.2498 74.0476 12.4959C74.4637 12.742 74.9043 12.8651 75.3692 12.8651C75.8465 12.8651 76.2931 12.7481 76.7092 12.5144C77.1252 12.2683 77.4556 11.9238 77.7004 11.4808C77.9451 11.0256 78.0675 10.4842 78.0675 9.85679Z" fill="currentColor"></path><path d="M81.5464 28.8716C81.5464 27.8307 81.7497 26.9075 82.1565 26.102C82.5754 25.2965 83.1362 24.6769 83.8388 24.2431C84.5537 23.8094 85.3486 23.5925 86.2236 23.5925C86.9878 23.5925 87.6534 23.7474 88.2203 24.0572C88.7996 24.367 89.2617 24.7574 89.6069 25.2283V23.7598H92.2138V34.0577H89.6069V32.5521C89.2741 33.0354 88.8118 33.4381 88.2203 33.7603C87.641 34.0701 86.9693 34.225 86.2051 34.225C85.3424 34.225 84.5537 34.0019 83.8388 33.5558C83.1362 33.1097 82.5754 32.4839 82.1565 31.6784C81.7497 30.8605 81.5464 29.925 81.5464 28.8716ZM89.6069 28.9088C89.6069 28.2768 89.4836 27.7377 89.2371 27.2916C88.9906 26.8331 88.6578 26.4861 88.2388 26.2507C87.8197 26.0028 87.3699 25.8789 86.8892 25.8789C86.4085 25.8789 85.9648 25.9966 85.5581 26.232C85.1514 26.4675 84.8186 26.8145 84.5598 27.273C84.3133 27.7191 84.19 28.2519 84.19 28.8716C84.19 29.4912 84.3133 30.0364 84.5598 30.5073C84.8186 30.9658 85.1514 31.3191 85.5581 31.5669C85.9771 31.8147 86.4209 31.9386 86.8892 31.9386C87.3699 31.9386 87.8197 31.821 88.2388 31.5855C88.6578 31.3376 88.9906 30.9907 89.2371 30.5446C89.4836 30.086 89.6069 29.5407 89.6069 28.9088Z" fill="currentColor"></path><path d="M46.1876 19.0687C47.7571 19.0687 49.1338 19.3771 50.318 19.994C51.5165 20.6108 52.4367 21.493 53.0787 22.6406C53.735 23.7739 54.0631 25.0937 54.0631 26.5999C54.0631 28.1062 53.735 29.4259 53.0787 30.5592C52.4367 31.6781 51.5165 32.546 50.318 33.1629C49.1338 33.7797 47.7571 34.0881 46.1876 34.0881H40.9658V19.0687H46.1876ZM46.0806 31.5275C47.65 31.5275 48.8627 31.0971 49.7188 30.2364C50.5748 29.3757 51.0028 28.1636 51.0028 26.5999C51.0028 25.0363 50.5748 23.817 49.7188 22.9419C48.8627 22.0525 47.65 21.6078 46.0806 21.6078H43.9619V31.5275H46.0806Z" fill="currentColor"></path><path d="M105.143 15.1351C104.163 15.1351 103.282 14.9198 102.5 14.4891C101.716 14.0462 101.098 13.4248 100.646 12.6251C100.206 11.8254 99.9844 10.9025 99.9844 9.85679C99.9844 8.81093 100.211 7.88814 100.664 7.0884C101.129 6.28865 101.759 5.67347 102.555 5.24283C103.35 4.79989 104.237 4.57843 105.216 4.57843C106.195 4.57843 107.082 4.79989 107.878 5.24283C108.673 5.67347 109.297 6.28865 109.75 7.0884C110.215 7.88814 110.447 8.81093 110.447 9.85679C110.447 10.9025 110.209 11.8254 109.732 12.6251C109.267 13.4248 108.63 14.0462 107.823 14.4891C107.027 14.9198 106.134 15.1351 105.143 15.1351ZM105.143 12.8835C105.608 12.8835 106.042 12.7728 106.446 12.5512C106.862 12.3175 107.193 11.973 107.437 11.5178C107.682 11.0625 107.804 10.5088 107.804 9.85679C107.804 8.88475 107.547 8.14038 107.034 7.62361C106.532 7.09456 105.914 6.83002 105.18 6.83002C104.445 6.83002 103.828 7.09456 103.326 7.62361C102.836 8.14038 102.591 8.88475 102.591 9.85679C102.591 10.8288 102.83 11.5793 103.307 12.1084C103.797 12.6251 104.409 12.8835 105.143 12.8835Z" fill="currentColor"></path><path d="M121.033 4.74457V14.969H118.445V13.6772C118.115 14.12 117.68 14.4707 117.142 14.7291C116.616 14.9752 116.041 15.0982 115.416 15.0982C114.621 15.0982 113.917 14.9322 113.306 14.5999C112.694 14.2554 112.21 13.7571 111.855 13.105C111.512 12.4406 111.342 11.6532 111.342 10.7426V4.74457H113.911V10.3735C113.911 11.1856 114.113 11.8131 114.517 12.256C114.921 12.6866 115.471 12.902 116.169 12.902C116.878 12.902 117.435 12.6866 117.84 12.256C118.243 11.8131 118.445 11.1856 118.445 10.3735V4.74457H121.033Z" fill="currentColor"></path><path d="M127.875 4.59692C129.086 4.59692 130.065 4.98449 130.812 5.75963C131.558 6.52247 131.931 7.59289 131.931 8.97092V14.969H129.361V9.32154C129.361 8.50953 129.16 7.88819 128.756 7.45755C128.352 7.01462 127.802 6.79315 127.104 6.79315C126.394 6.79315 125.831 7.01462 125.415 7.45755C125.012 7.88819 124.809 8.50953 124.809 9.32154V14.969H122.24V4.74457H124.809V6.01801C125.152 5.57508 125.587 5.23057 126.113 4.98449C126.651 4.72611 127.238 4.59692 127.875 4.59692Z" fill="currentColor"></path><path d="M136.334 6.86697V11.8131C136.334 12.1576 136.413 12.4098 136.572 12.5698C136.743 12.7174 137.025 12.7912 137.417 12.7912H138.609V14.969H136.994C134.828 14.969 133.745 13.9109 133.745 11.7947V6.86697H132.534V4.74456H133.745V2.21613H136.334V4.74456H138.609V6.86697H136.334Z" fill="currentColor"></path><path d="M94.7518 4.59692C96.0001 4.59692 97.0038 4.98449 97.7628 5.75963C98.5337 6.52247 98.9191 7.59289 98.9191 8.97092V14.969H96.3494V9.32154C96.3494 8.52183 96.1472 7.91279 95.7437 7.49447C95.3394 7.06384 94.7888 6.84851 94.0911 6.84851C93.3943 6.84851 92.8374 7.06384 92.4213 7.49447C92.0169 7.91279 91.8156 8.52183 91.8156 9.32154V14.969H89.2455V9.32154C89.2455 8.52183 89.0436 7.91279 88.6397 7.49447C88.2359 7.06384 87.6852 6.84851 86.9878 6.84851C86.278 6.84851 85.7152 7.06384 85.2991 7.49447C84.8952 7.91279 84.6933 8.52183 84.6933 9.32154V14.969H82.1235V4.74457H84.6933V5.9811C85.0238 5.55046 85.4459 5.21211 85.9598 4.96604C86.4861 4.71996 87.0612 4.59692 87.6853 4.59692C88.4807 4.59692 89.1904 4.76918 89.8145 5.11368C90.4383 5.44589 90.9221 5.92573 91.265 6.55323C91.5954 5.96264 92.072 5.48895 92.6966 5.13214C93.3329 4.77533 94.018 4.59692 94.7518 4.59692Z" fill="currentColor"></path><path d="M66.4863 6.33176C66.8166 5.79039 67.245 5.36591 67.7711 5.05832C68.3096 4.75072 68.9214 4.59692 69.6067 4.59692V7.30991H68.9275C68.1199 7.30991 67.508 7.50062 67.092 7.88203C66.6882 8.26346 66.4863 8.92786 66.4863 9.87523V14.969H63.9165V4.74457H66.4863V6.33176Z" fill="currentColor"></path><path d="M57.9638 23.7598V34.0577H55.3755V23.7598H57.9638Z" fill="currentColor"></path><path d="M73.618 23.7598V34.0577H71.0298V23.7598H73.618Z" fill="currentColor"></path><path d="M96.2801 20.3025V34.0578H93.6924V20.3025H96.2801Z" fill="currentColor"></path><path d="M78.6657 25.8974V30.8792C78.6657 31.2261 78.7458 31.4801 78.9061 31.6412C79.0786 31.79 79.362 31.8643 79.7565 31.8643H80.9581V34.0577H79.3313C77.1498 34.0577 76.059 32.992 76.059 30.8606V25.8974H74.8389V23.7598H76.059V21.2133H78.6657V23.7598H80.9581V25.8974H78.6657Z" fill="currentColor"></path><path d="M63.86 23.5925C64.6241 23.5925 65.2958 23.7474 65.875 24.0572C66.4543 24.3547 66.9104 24.745 67.2431 25.2283V23.7598H69.8499V34.1321C69.8499 35.0863 69.6588 35.9351 69.2767 36.6787C68.8947 37.4346 68.3215 38.0294 67.5574 38.4631C66.7932 38.9092 65.8689 39.1323 64.7843 39.1323C63.33 39.1323 62.1345 38.7915 61.1978 38.1099C60.2734 37.4283 59.7496 36.499 59.6263 35.3217H62.1961C62.3317 35.7926 62.6213 36.1644 63.065 36.437C63.521 36.722 64.0695 36.8645 64.7104 36.8645C65.4622 36.8645 66.0722 36.6353 66.5406 36.1768C67.0089 35.7306 67.2431 35.0491 67.2431 34.1321V32.5335C66.9104 33.0168 66.4482 33.4195 65.8566 33.7417C65.2773 34.0639 64.6117 34.225 63.86 34.225C62.9972 34.225 62.2084 34.0019 61.4935 33.5558C60.7787 33.1097 60.2118 32.4839 59.7928 31.6784C59.386 30.8605 59.1826 29.925 59.1826 28.8716C59.1826 27.8307 59.386 26.9075 59.7928 26.102C60.2118 25.2965 60.7725 24.6769 61.475 24.2431C62.1899 23.8094 62.9849 23.5925 63.86 23.5925ZM67.2431 28.9088C67.2431 28.2768 67.1199 27.7377 66.8734 27.2916C66.6269 26.8331 66.2941 26.4861 65.875 26.2507C65.456 26.0028 65.0062 25.8789 64.5255 25.8789C64.0448 25.8789 63.6011 25.9966 63.1944 26.232C62.7877 26.4675 62.4549 26.8145 62.1961 27.273C61.9496 27.7191 61.8263 28.2519 61.8263 28.8716C61.8263 29.4912 61.9496 30.0364 62.1961 30.5073C62.4549 30.9658 62.7877 31.3191 63.1944 31.5669C63.6135 31.8147 64.0571 31.9386 64.5255 31.9386C65.0062 31.9386 65.456 31.821 65.875 31.5855C66.2941 31.3376 66.6269 30.9907 66.8734 30.5446C67.1199 30.086 67.2431 29.5407 67.2431 28.9088Z" fill="currentColor"></path><path d="M57.6674 19.893H55.6718C55.5082 19.893 55.3755 20.0259 55.3755 20.1897V22.2368C55.3755 22.4007 55.5082 22.5336 55.6718 22.5336H57.6674C57.8311 22.5336 57.9637 22.4007 57.9637 22.2368V20.1897C57.9637 20.0259 57.8311 19.893 57.6674 19.893Z" fill="currentColor"></path><path d="M73.3217 19.893H71.3261C71.1624 19.893 71.0298 20.0259 71.0298 20.1897V22.2368C71.0298 22.4007 71.1624 22.5336 71.3261 22.5336H73.3217C73.4854 22.5336 73.618 22.4007 73.618 22.2368V20.1897C73.618 20.0259 73.4854 19.893 73.3217 19.893Z" fill="currentColor"></path></g></svg><span class="footer-text">Google 2MB HTML Limit Checker</span></div>
+    <span class="footer-text">Limit: 2,097,152 bytes &middot; <a href="https://paramountdigital.co.uk" target="_blank" rel="noopener">Paramount Digital</a></span>
+  </footer>
+
+  <script>
+    const fmt = n => n.toLocaleString();
+    const kb = n => (n/1024).toFixed(1) + ' KB';
+    const mb = n => (n/1024/1024).toFixed(2) + ' MB';
+    document.getElementById('updated-date').textContent = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    const $ = id => document.getElementById(id);
+    const runBtn = $('run-btn'), aiBtn = $('ai-btn');
+    function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    runBtn.addEventListener('click', runCheck);
+    aiBtn.addEventListener('click', runAI);
+
+    async function runCheck(){
+      const source = $('source').value.trim();
+      $('input-error').innerHTML = '';
+      if(!source){ $('input-error').innerHTML = '<div class="error-msg">Enter a URL or paste HTML.</div>'; return; }
+      runBtn.disabled = true; runBtn.textContent = 'Checking...';
+      try {
+        const res = await fetch('/analyse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source})});
+        const data = await res.json();
+        if(!res.ok){ throw new Error(data.error || 'Request failed'); }
+        render(data); aiBtn.disabled = false;
+      } catch(e){ $('input-error').innerHTML = '<div class="error-msg">'+esc(e.message)+'</div>'; }
+      finally { runBtn.disabled = false; runBtn.textContent = 'Run check'; }
+    }
+
+    let lastData = null, depthFilter='all', statusFilter='all', collapseRepeats=true;
+
+    function render(d){
+      lastData = d;
+      $('results').classList.remove('hidden');
+      $('src-label').textContent = d.source_label;
+      $('s-total').textContent = mb(d.total_bytes);
+      $('s-pct').innerHTML = d.pct_of_limit + '<span style="color:var(--teal-dark)">%</span>';
+      $('s-over').textContent = d.over_limit ? kb(d.overage_bytes) : '\u2014';
+      const over = d.over_limit;
+      // Verdict now reflects the deterministic risk level, not just over/under.
+      const verdictMap = {
+        critical:{t:'CRITICAL',c:'var(--red)'}, high:{t:'HIGH RISK',c:'var(--red)'},
+        low:{t:'LOW RISK',c:'#a9770f'}, near:{t:'NEAR LIMIT',c:'#a9770f'},
+        none:{t:'OK',c:'var(--teal-dark)'}
+      };
+      const v = verdictMap[d.risk] || verdictMap.none;
+      $('s-status').innerHTML = '<span style="color:'+v.c+'">'+v.t+'</span>';
+      const fill = $('meter-fill');
+      fill.style.width = Math.min(100, d.pct_of_limit) + '%';
+      fill.classList.toggle('over', over);
+      $('meter-label').textContent = over
+        ? fmt(d.total_bytes)+' bytes \u2014 '+fmt(d.overage_bytes)+' past the 2MB cut. '+d.cut_count+' element(s) fully lost, '+d.partial_count+' partially clipped. The cut lands inside '+(d.straddler?d.straddler.label:'an untracked node')+'.'
+        : fmt(d.total_bytes)+' bytes \u2014 within the 2MB limit. Nothing is cut.';
+      renderFlags(d);
+      $('cutline-panel').classList.toggle('hidden', !over);
+      if(over){ $('cut-before').textContent = d.cut_before; $('cut-after').textContent = d.cut_after; }
+      // reset the preview each run; label the button by whether anything is cut
+      $('preview-wrap').classList.add('hidden');
+      $('preview-frame').removeAttribute('srcdoc');
+      $('preview-btn').textContent = over ? "Render Google's view" : 'Render fetched page';
+      $('preview-meta').textContent = over
+        ? 'Renders only the first '+mb(d.limit_bytes)+' \u2014 content below the cut is missing.'
+        : 'Whole page is under 2MB; nothing is cut.';
+      $('source-wrap').classList.add('hidden');
+      $('source-full').innerHTML = ''; $('source-snip').innerHTML = '';
+      $('source-meta').textContent = over ? '' : 'Whole page is under 2MB \u2014 both sides will be identical.';
+      renderLost(d);
+      // When over the limit, default the element breakdown to the "Lost" view so
+      // cut/clipped elements are visible immediately instead of buried under all rows.
+      statusFilter = over ? 'cut' : 'all';
+      document.querySelectorAll('#status-filters .filter-btn').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.status === statusFilter));
+      renderTable();
+    }
+
+    // Deterministic, prominent flags — no API key needed. Two distinct checks the
+    // user asked for: (1) any visible TEXT lost below the cut, (2) the cut landing
+    // mid product/FAQ list.
+    const ICON_ALERT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+    const ICON_TEXT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="14" y2="17"/></svg>';
+    const ICON_GRID = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>';
+    const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+
+    function renderFlags(d){
+      const box = $('flags');
+      box.innerHTML = '';
+      if(!d.over_limit){
+        if(d.risk === 'near'){
+          box.appendChild(flagEl('warn', ICON_ALERT, 'Near the 2MB limit',
+            'This page is '+d.pct_of_limit+'% of the limit. Google\u2019s 2MB cap also counts the HTTP request headers it sends, so a page this close can tip over the cut in practice \u2014 keep an eye on it.'));
+        }
+        return;
+      }
+
+      // FLAG 1 — text/content missing (with or without a heading)
+      const lt = d.lost_text;
+      if(lt){
+        let detail = 'Human-readable text is being cut off below the 2MB line and won\u2019t be indexed by Google \u2014 roughly '
+          + fmt(lt.char_count) + ' characters'
+          + (lt.para_count ? ' across ~' + fmt(lt.para_count) + ' paragraphs/list items' : '') + '.';
+        const f = flagEl('danger', ICON_TEXT, 'Text content is missing below the cut', detail);
+        const body = f.querySelector('.flag-body');
+        // Name what the content is, as specifically as we can.
+        if(lt.headings && lt.headings.length){
+          body.insertAdjacentHTML('beforeend',
+            '<div class="flag-detail" style="margin-top:.4rem"><span class="quiet">Lost sections include:</span></div>'
+            + '<ul class="flag-list">' + lt.headings.map(h=>'<li>'+esc(h)+'</li>').join('') + '</ul>');
+        }
+        if(lt.faq_questions && lt.faq_questions.length){
+          body.insertAdjacentHTML('beforeend',
+            '<div class="flag-detail" style="margin-top:.4rem"><span class="quiet">Lost FAQ questions:</span></div>'
+            + '<ul class="flag-list">' + lt.faq_questions.map(q=>'<li>'+esc(q)+'</li>').join('') + '</ul>');
+        }
+        if((!lt.headings || !lt.headings.length) && lt.sample){
+          body.insertAdjacentHTML('beforeend',
+            '<div class="flag-detail" style="margin-top:.4rem"><span class="quiet">Sample of lost text:</span> \u201c'+esc(lt.sample)+'\u201d</div>');
+        }
+        box.appendChild(f);
+      }
+
+      // FLAG 2 — cut lands mid product / FAQ / listing
+      const ml = d.midlist_cut;
+      if(ml){
+        let detail = 'The 2MB cut falls inside a repeating product/listing block ('
+          + '<code style="font-family:SF Mono,Menlo,monospace">'+esc(ml.where)+'</code>)'
+          + (ml.cut_items ? ', and '+fmt(ml.cut_items)+' listing item(s) fall on or below the cut' : '')
+          + '. Products after this point won\u2019t be seen by Google \u2014 the listing is being truncated part-way through.';
+        box.appendChild(flagEl('danger', ICON_GRID, 'Cut off mid product/FAQ list', detail));
+      }
+
+      // Reassure when over the limit but nothing text-related is affected.
+      if(!lt && !ml){
+        box.appendChild(flagEl('ok', ICON_CHECK, 'No visible text lost',
+          'The page is over 2MB, but only non-text markup (scripts/styles/whitespace) falls below the cut \u2014 no readable content or products appear to be missing. Still worth trimming to stay under the limit.'));
+      }
+    }
+
+    function flagEl(kind, icon, title, detailHtml){
+      const el = document.createElement('div');
+      el.className = 'flag ' + kind;
+      el.innerHTML = '<div class="flag-ico">'+icon+'</div><div class="flag-body">'
+        + '<div class="flag-title">'+esc(title)+'</div>'
+        + '<div class="flag-detail">'+detailHtml+'</div></div>';
+      return el;
+    }
+    const previewBtn = $('preview-btn');
+    previewBtn.addEventListener('click', async () => {
+      const source = $('source').value.trim();
+      if(!source) return;
+      previewBtn.disabled = true; previewBtn.textContent = 'Rendering...';
+      try {
+        const res = await fetch('/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source})});
+        const data = await res.json();
+        if(!res.ok){ throw new Error(data.error || 'Preview failed'); }
+        $('preview-url').textContent = source.startsWith('http') ? source : 'pasted HTML';
+        $('preview-frame').srcdoc = data.html;
+        $('preview-wrap').classList.remove('hidden');
+        $('preview-meta').textContent = 'Showing '+kb(data.shown_bytes)+' of '+kb(data.total_bytes)
+          + (data.over_limit ? ' \u2014 the rest is not fetched by Google.' : ' \u2014 full page (under limit).');
+      } catch(e){
+        $('preview-meta').textContent = e.message;
+      } finally {
+        previewBtn.disabled = false;
+        previewBtn.textContent = lastData && lastData.over_limit ? "Render Google's view" : 'Render fetched page';
+      }
+    });
+
+    // ---- Full vs Snipped HTML side by side ----
+    const sourceBtn = $('source-btn');
+    let syncHandlersBound = false;
+    sourceBtn.addEventListener('click', async () => {
+      const source = $('source').value.trim();
+      if(!source) return;
+      sourceBtn.disabled = true; sourceBtn.textContent = 'Loading...';
+      try {
+        const res = await fetch('/source',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source})});
+        const data = await res.json();
+        if(!res.ok){ throw new Error(data.error || 'Source load failed'); }
+
+        const keptEsc = esc(data.kept_html);
+        const lostEsc = esc(data.lost_html);
+        const cutBar = '<span class="cut-line">\u25b2 2MB CUT \u2014 Google keeps everything above this line</span>';
+
+        // Full pane: kept + cut marker + dimmed lost tail
+        let fullHtml = '';
+        if(data.kept_truncated){ fullHtml += '<span class="source-trunc">[\u2026 earlier HTML trimmed for display \u2026]</span>\n'; }
+        fullHtml += keptEsc;
+        if(data.over_limit){
+          fullHtml += '\n' + cutBar + '\n' + '<span class="below">' + lostEsc + '</span>';
+          if(data.lost_truncated){ fullHtml += '<span class="source-trunc">[\u2026 '+fmt(data.lost_total_chars - lostEsc.length)+'+ more chars below the cut not shown \u2026]</span>'; }
+        }
+        $('source-full').innerHTML = fullHtml;
+
+        // Snipped pane: only what Google keeps
+        let snipHtml = '';
+        if(data.kept_truncated){ snipHtml += '<span class="source-trunc">[\u2026 earlier HTML trimmed for display \u2026]</span>\n'; }
+        snipHtml += keptEsc;
+        if(data.over_limit){ snipHtml += '\n' + cutBar + '\n<span class="source-trunc">[end of fetched HTML \u2014 nothing below is seen by Google]</span>'; }
+        $('source-snip').innerHTML = snipHtml;
+
+        // Keep the un-highlighted markup so search can re-render cleanly.
+        sourceBaseHTML = { full: fullHtml, snip: snipHtml };
+        $('source-search').value = '';
+        clearSearch();
+
+        $('source-wrap').classList.remove('hidden');
+        $('source-meta').textContent = data.over_limit
+          ? 'Full: '+kb(data.total_bytes)+' \u00b7 Snipped keeps '+kb(data.cut_byte)+'. Dimmed = dropped by Google.'
+          : 'Whole page is under 2MB \u2014 both sides are identical.';
+
+        // sync scroll (bind once)
+        if(!syncHandlersBound){
+          const a = $('source-full'), b = $('source-snip');
+          let lock = false;
+          const mk = (src,dst) => () => {
+            if(!$('source-sync').checked || lock) return;
+            lock = true;
+            dst.scrollTop = src.scrollTop; dst.scrollLeft = src.scrollLeft;
+            lock = false;
+          };
+          a.addEventListener('scroll', mk(a,b));
+          b.addEventListener('scroll', mk(b,a));
+          syncHandlersBound = true;
+        }
+      } catch(e){
+        $('source-meta').textContent = e.message;
+      } finally {
+        sourceBtn.disabled = false; sourceBtn.textContent = 'Load source comparison';
+      }
+    });
+    $('source-wrap-toggle').addEventListener('change', e => {
+      $('source-full').classList.toggle('wrap', e.target.checked);
+      $('source-snip').classList.toggle('wrap', e.target.checked);
+    });
+
+    // ---- Source search: highlight matches in both panes, step through them ----
+    let sourceBaseHTML = null;      // {full, snip} un-highlighted markup
+    let matchEls = [];              // active-pane <mark> elements, in order
+    let matchIdx = -1;
+    let activePaneId = 'source-full';
+    let searchTimer = null;
+
+    function clearSearch(){
+      matchEls = []; matchIdx = -1;
+      $('search-count').textContent = '';
+      $('search-prev').disabled = true;
+      $('search-next').disabled = true;
+    }
+
+    // Wrap every occurrence of `term` inside the text nodes of `root` with <mark>.
+    // Walking text nodes (not innerHTML) preserves the cut-marker/dimming spans and
+    // never breaks the HTML entities that make up the escaped source.
+    function highlight(root, term, caseSensitive){
+      const flags = caseSensitive ? 'g' : 'gi';
+      const rx = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), flags);
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+      const textNodes = [];
+      let n; while((n = walker.nextNode())) textNodes.push(n);
+      let count = 0;
+      textNodes.forEach(node => {
+        const text = node.nodeValue;
+        rx.lastIndex = 0;
+        if(!rx.test(text)) return;
+        rx.lastIndex = 0;
+        const frag = document.createDocumentFragment();
+        let last = 0, m;
+        while((m = rx.exec(text))){
+          if(m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+          const mark = document.createElement('mark');
+          mark.textContent = m[0];
+          frag.appendChild(mark);
+          last = m.index + m[0].length;
+          count++;
+          if(m[0].length === 0) rx.lastIndex++; // guard against zero-width
+        }
+        if(last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+        node.parentNode.replaceChild(frag, node);
+      });
+      return count;
+    }
+
+    function runSearch(){
+      if(!sourceBaseHTML) return;
+      const term = $('source-search').value;
+      const caseSensitive = $('search-case').checked;
+      // reset both panes to clean markup
+      $('source-full').innerHTML = sourceBaseHTML.full;
+      $('source-snip').innerHTML = sourceBaseHTML.snip;
+      clearSearch();
+      if(!term){ return; }
+
+      // Highlight both panes; navigation follows the fuller (left) pane.
+      highlight($('source-snip'), term, caseSensitive);
+      highlight($('source-full'), term, caseSensitive);
+      activePaneId = 'source-full';
+      matchEls = Array.from($(activePaneId).querySelectorAll('mark'));
+
+      if(!matchEls.length){
+        $('search-count').textContent = 'No matches';
+        return;
+      }
+      $('search-prev').disabled = false;
+      $('search-next').disabled = false;
+      goToMatch(0);
+    }
+
+    function goToMatch(i){
+      if(!matchEls.length) return;
+      if(matchEls[matchIdx]) matchEls[matchIdx].classList.remove('active');
+      matchIdx = (i + matchEls.length) % matchEls.length;
+      const el = matchEls[matchIdx];
+      el.classList.add('active');
+      el.scrollIntoView({block:'center'});
+      // mirror position into the other pane if sync scroll is on
+      if($('source-sync').checked){
+        const other = activePaneId === 'source-full' ? $('source-snip') : $('source-full');
+        other.scrollTop = $(activePaneId).scrollTop;
+      }
+      $('search-count').textContent = (matchIdx+1)+' / '+matchEls.length;
+    }
+
+    $('source-search').addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(runSearch, 180); // debounce for large sources
+    });
+    $('source-search').addEventListener('keydown', e => {
+      if(e.key === 'Enter'){ e.preventDefault(); goToMatch(matchIdx + (e.shiftKey ? -1 : 1)); }
+    });
+    $('search-case').addEventListener('change', runSearch);
+    $('search-next').addEventListener('click', () => goToMatch(matchIdx + 1));
+    $('search-prev').addEventListener('click', () => goToMatch(matchIdx - 1));
+
+    function renderLost(d){
+      const inv = d.lost_inventory;
+      const blockLost = d.blocks.filter(b => b.status==='cut' || b.status==='partial');
+      const hasInv = inv && inv.groups && inv.groups.length;
+      $('lost-panel').classList.toggle('hidden', !hasInv && !blockLost.length);
+      renderInventory(d);
+      // keep the byte-level block summary underneath (secondary)
+      const lost = blockLost.slice().sort((a,b)=> b.size-a.size).slice(0,15);
+      $('lost-body').innerHTML = lost.length
+        ? '<div class="sec-heading">Lost blocks by size (from the element map)</div>'
+          + lost.map(b => '<div class="lost-item"><div class="lbl">'+esc(b.label)+' <span class="repeat-badge" style="background:'+(b.status==='partial'?'rgba(232,168,40,.12)':'rgba(218,26,80,.1)')+';color:'+(b.status==='partial'?'#a9770f':'var(--red)')+'">'+(b.status==='partial'? b.kept_pct+'% kept':'fully lost')+'</span></div><div class="meta">'+kb(b.size)+' \u00b7 depth '+b.depth+(b.path?' \u00b7 in '+esc(b.path):'')+'</div>'+(b.preview?'<div class="prev">'+esc(b.preview)+'</div>':'')+'</div>').join('')
+        : '';
+    }
+
+    function renderInventory(d){
+      const inv = d.lost_inventory;
+      const box = $('inventory');
+      const summ = $('inventory-summary');
+      if(!inv || !inv.groups || !inv.groups.length){
+        summ.innerHTML = ''; box.innerHTML = ''; return;
+      }
+      // tally types across all groups
+      const totals = {};
+      inv.groups.forEach(g => Object.entries(g.counts).forEach(([t,c]) => totals[t]=(totals[t]||0)+c));
+      const totalStr = Object.entries(totals).sort((a,b)=>b[1]-a[1])
+        .map(([t,c]) => c+' '+t.toLowerCase()+(c>1?'s':'')).join(', ');
+      summ.innerHTML = '<strong>'+fmt(inv.total_items)+' pieces of content</strong> are cut off below the 2MB line, across '
+        + inv.groups.length + ' container'+(inv.groups.length>1?'s':'')+'. Expand each to see exactly what\u2019s missing and where. '
+        + '<span class="quiet">('+esc(totalStr)+')</span>';
+
+      box.innerHTML = '<div class="inv-controls">'
+        + '<input class="inv-filter" id="inv-filter" placeholder="Filter lost content..." autocomplete="off" />'
+        + '<button class="inv-toggle-all" id="inv-expand">Expand all</button>'
+        + '<button class="inv-toggle-all" id="inv-collapse">Collapse all</button>'
+        + '</div>'
+        + inv.groups.map((g, gi) => {
+            const countStr = Object.entries(g.counts).map(([t,c]) => c+'× '+t).join(' · ');
+            const items = g.items.map(it =>
+              '<div class="inv-item" data-text="'+esc((it.type+' '+it.text).toLowerCase())+'">'
+              + '<span class="inv-type">'+esc(it.type)+'</span>'
+              + '<span class="inv-text">'+esc(it.text)+'</span></div>').join('');
+            return '<div class="inv-group'+(gi===0?' open':'')+'" data-group="'+gi+'">'
+              + '<div class="inv-group-head">'
+              + '<span class="inv-chevron">\u25b6</span>'
+              + '<span class="inv-container-name">'+esc(g.container)+'</span>'
+              + '<span class="inv-count-badge">'+g.item_count+' item'+(g.item_count>1?'s':'')+'</span>'
+              + '<span class="inv-path" title="'+esc(g.path)+'">'+esc(g.path)+'</span>'
+              + '</div><div class="inv-group-body" title="'+esc(countStr)+'">'+items+'</div></div>';
+          }).join('')
+        + (inv.truncated ? '<div class="inv-trunc">\u2026 more lost content below (list capped for display) \u2026</div>' : '');
+
+      // wire up expand/collapse and filter
+      box.querySelectorAll('.inv-group-head').forEach(h => h.addEventListener('click', () => {
+        h.parentElement.classList.toggle('open');
+      }));
+      $('inv-expand').addEventListener('click', () => box.querySelectorAll('.inv-group').forEach(g => g.classList.add('open')));
+      $('inv-collapse').addEventListener('click', () => box.querySelectorAll('.inv-group').forEach(g => g.classList.remove('open')));
+      $('inv-filter').addEventListener('input', e => {
+        const q = e.target.value.trim().toLowerCase();
+        box.querySelectorAll('.inv-group').forEach(g => {
+          let shown = 0;
+          g.querySelectorAll('.inv-item').forEach(it => {
+            const match = !q || it.dataset.text.includes(q);
+            it.style.display = match ? '' : 'none';
+            if(match) shown++;
+          });
+          g.style.display = (shown || !q) ? '' : 'none';
+          if(q && shown) g.classList.add('open');
+        });
+      });
+    }
+
+    function renderTable(){
+      if(!lastData) return;
+      let rows = lastData.blocks.slice();
+      if(depthFilter!=='all') rows = rows.filter(b => b.depth <= +depthFilter);
+      if(statusFilter!=='all') rows = rows.filter(b => b.status===statusFilter);
+      const out = [];
+      for(const b of rows){
+        const prev = out[out.length-1];
+        if(collapseRepeats && prev && prev.label===b.label && prev.depth===b.depth && prev.status===b.status){
+          prev._count=(prev._count||1)+1; prev._sizeSum=(prev._sizeSum||prev.size)+b.size;
+        } else { out.push(Object.assign({}, b)); }
+      }
+      $('blocks-body').innerHTML = out.map(b => {
+        const badge = b.status==='kept'?'badge-good':b.status==='partial'?'badge-mid':'badge-low';
+        const barColor = b.status==='kept'?'var(--teal)':b.status==='partial'?'var(--amber)':'var(--red)';
+        const rep = b._count?'<span class="repeat-badge">\u00d7'+b._count+'</span>':'';
+        const sizeTxt = b._count?kb(b._sizeSum):kb(b.size);
+        const indent = '&nbsp;'.repeat(b.depth*2);
+        return '<tr class="'+(b.status==='cut'?'row-cut':'')+'"><td><span class="depth-pill">d'+b.depth+'</span>'+indent+'<span class="mono" style="color:var(--ink)">'+esc(b.label)+'</span>'+rep+'</td><td class="ctx-cell" title="'+esc(b.path)+'">'+esc(b.path||'\u2014')+'</td><td class="preview-cell" title="'+esc(b.preview)+'">'+esc(b.preview||'\u2014')+'</td><td class="mono">'+sizeTxt+'</td><td class="barcell"><div class="minibar"><span style="width:'+b.kept_pct+'%;background:'+barColor+'"></span></div><span class="mono">'+b.kept_pct+'%</span></td><td><span class="badge '+badge+'">'+b.status+'</span></td></tr>';
+      }).join('');
+      $('row-count').textContent = out.length+' row'+(out.length!==1?'s':'')+(collapseRepeats?' (repeats collapsed)':'');
+    }
+
+    document.querySelectorAll('#depth-filters .filter-btn').forEach(btn => btn.addEventListener('click', () => {
+      document.querySelectorAll('#depth-filters .filter-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active'); depthFilter = btn.dataset.depth; renderTable();
+    }));
+    document.querySelectorAll('#status-filters .filter-btn').forEach(btn => btn.addEventListener('click', () => {
+      document.querySelectorAll('#status-filters .filter-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active'); statusFilter = btn.dataset.status; renderTable();
+    }));
+    $('collapse-repeats').addEventListener('change', e => { collapseRepeats = e.target.checked; renderTable(); });
+
+    const vitalOrder = {critical:0, important:1, minor:2, irrelevant:3};
+    const vitalBadge = {critical:'badge-low', important:'badge-mid', minor:'badge-good', irrelevant:'badge-good'};
+    const impactMeta = {
+      critical:{lab:'CRITICAL IMPACT', cls:'impact-critical'},
+      high:{lab:'HIGH IMPACT', cls:'impact-high'},
+      moderate:{lab:'MODERATE IMPACT', cls:'impact-moderate'},
+      low:{lab:'LOW IMPACT', cls:'impact-low'},
+      none:{lab:'NO IMPACT', cls:'impact-none'}
+    };
+    async function runAI(){
+      const source = $('source').value.trim();
+      $('ai-panel').classList.remove('hidden');
+      $('ai-body').innerHTML = '<div class="loading-state"><div class="spinner"></div>Reading the lost HTML &amp; judging ranking impact...</div>';
+      aiBtn.disabled = true;
+      try {
+        const res = await fetch('/ai-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source})});
+        const data = await res.json();
+        if(!data.ok){ throw new Error(data.error || 'Analysis failed'); }
+        let html = '';
+
+        // Ranking-impact verdict banner (headline)
+        const im = impactMeta[data.impact] || impactMeta.moderate;
+        html += '<div class="impact-banner '+im.cls+'"><div class="impact-badge">'+im.lab+'</div>'
+              + '<div class="impact-verdict">'+esc(data.verdict||'')+'</div></div>';
+
+        // Deterministic ranking-critical tags found in the lost region
+        const hits = data.seo_hits || [];
+        if(hits.length){
+          html += '<div class="seo-hits"><div class="seo-hits-title">Ranking-critical tags detected below the cut</div>';
+          hits.forEach(h => {
+            const sv = h.severity==='high'?'badge-low':h.severity==='medium'?'badge-mid':'badge-good';
+            html += '<div class="seo-hit"><span class="badge '+sv+'">'+esc((h.severity||'').toUpperCase())+'</span><span class="seo-hit-what">'+esc(h.what)+'</span><span class="seo-hit-count">×'+h.count+'</span></div>';
+          });
+          html += '</div>';
+        }
+
+        if(data.lost_summary){ html += '<div class="ai-lost"><strong>What\u2019s lost below the cut:</strong> '+esc(data.lost_summary)+'</div>'; }
+
+        // Per-section vitality
+        const sections = (data.sections||[]).slice().sort((a,b)=> (vitalOrder[a.vitality]??9)-(vitalOrder[b.vitality]??9));
+        if(sections.length){ html += '<div class="sec-heading">Lost sections by ranking importance</div>'; }
+        sections.forEach(s => {
+          const v = s.vitality || 'minor';
+          html += '<div class="ai-finding vital-'+v+'"><div class="fhead">'
+                + '<span class="lbl">'+esc(s.label||'')+'</span>'
+                + '<span class="badge '+(vitalBadge[v]||'badge-good')+'">'+esc(v.toUpperCase())+'</span>'
+                + '<span class="purpose">'+esc(s.purpose||'')+'</span></div>'
+                + '<div class="reason">'+esc(s.reason||'')+'</div>'
+                + '<div class="fix">'+esc(s.fix||'')+'</div></div>';
+        });
+
+        // Reduction recommendations — how to get back under 2MB
+        const reductions = data.reductions || [];
+        if(reductions.length){
+          html += '<div class="sec-heading">How to get under 2MB &mdash; reduction recommendations</div>';
+          reductions.forEach(r => {
+            const risk = (r.risk||'').toLowerCase();
+            const riskBadge = risk==='safe' ? 'badge-good' : 'badge-mid';
+            const riskLab = risk==='safe' ? 'SAFE' : 'TEST FIRST';
+            html += '<div class="reduction"><div class="fhead">'
+                  + '<span class="lbl">'+esc(r.target||'')+'</span>'
+                  + (r.risk?'<span class="badge '+riskBadge+'">'+riskLab+'</span>':'')
+                  + (r.saving && r.saving!=='0' ? '<span class="saving">save '+esc(r.saving)+'</span>':'')
+                  + '</div><div class="action">'+esc(r.action||'')+'</div></div>';
+          });
+        }
+
+        $('ai-body').innerHTML = html || '<div class="loading-state">No findings returned.</div>';
+      } catch(e){ $('ai-body').innerHTML = '<div class="error-msg">'+esc(e.message)+'</div>'; }
+      finally { aiBtn.disabled = false; }
+    }
+</script>
+</body>
+</html>
