@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>2MB Limit Report — {{ source_label }}</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --text:#2a2a2a; --muted:#6a6a6a; --muted2:#a3a3a3;
+    --line:#ededed; --line2:#dedede; --surface2:#f6f7f8;
+    --teal:#01C6A3; --teal-dark:#008475; --amber:#E8A828; --red:#DA1A50;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:#fff;color:var(--text);
+       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+       font-size:13px;line-height:1.6;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .sheet{max-width:860px;margin:0 auto;padding:36px 40px 56px;}
+
+  header.rpt{display:flex;justify-content:space-between;align-items:flex-start;
+             gap:24px;border-bottom:2px solid var(--ink);padding-bottom:16px;}
+  .brand{color:var(--ink);}
+  .brand .paramount-logo{height:32px;width:auto;display:block;}
+  .brand-sub{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted2);margin-top:6px;}
+  .meta{text-align:right;font-size:11px;color:var(--muted);}
+  .meta strong{display:block;color:var(--ink);font-size:11.5px;font-weight:600;
+               line-height:1.45;word-break:break-all;max-width:390px;margin-bottom:2px;}
+
+  h1{font-size:23px;margin:26px 0 4px;color:var(--ink);letter-spacing:-.02em;}
+  .lede{color:var(--muted);margin:0 0 22px;font-size:12.5px;}
+
+  h2{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted2);
+     margin:30px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line);}
+
+  .verdict{border-radius:10px;padding:16px 18px;margin:0 0 22px;border:1px solid;}
+  .verdict .vtitle{font-size:14px;font-weight:700;margin-bottom:4px;}
+  .verdict p{margin:0;font-size:12.5px;}
+  .v-critical{background:rgba(218,26,80,.06);border-color:rgba(218,26,80,.3);}
+  .v-critical .vtitle{color:var(--red);}
+  .v-warn{background:rgba(232,168,40,.08);border-color:rgba(232,168,40,.35);}
+  .v-warn .vtitle{color:#a9770f;}
+  .v-ok{background:rgba(1,198,163,.07);border-color:rgba(1,198,163,.3);}
+  .v-ok .vtitle{color:var(--teal-dark);}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:6px;}
+  .stat{border:1px solid var(--line2);border-top:3px solid var(--teal);border-radius:8px;padding:12px 13px;}
+  .stat.over{border-top-color:var(--red);}
+  .stat .num{font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.02em;}
+  .stat .lbl{font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted2);margin-top:2px;}
+
+  .meter{height:12px;border-radius:6px;background:var(--surface2);overflow:hidden;
+         margin:16px 0 6px;border:1px solid var(--line2);position:relative;}
+  .meter .fill{height:100%;background:var(--teal);}
+  .meter .fill.over{background:var(--red);}
+  .meter-note{font-size:11px;color:var(--muted);display:flex;justify-content:space-between;}
+
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th{text-align:left;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
+     color:var(--muted2);border-bottom:1px solid var(--line2);padding:7px 9px;font-weight:600;}
+  td{padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  td.mono,.mono{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11px;}
+
+  .pill{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;
+        font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;}
+  .p-kept{background:rgba(1,198,163,.14);color:var(--teal-dark);}
+  .p-partial{background:rgba(232,168,40,.16);color:#a9770f;}
+  .p-cut{background:rgba(218,26,80,.1);color:var(--red);}
+  .p-high{background:rgba(218,26,80,.1);color:var(--red);}
+  .p-medium{background:rgba(232,168,40,.16);color:#a9770f;}
+  .p-low{background:var(--surface2);color:var(--muted);}
+
+  .flag{border-left:3px solid var(--amber);background:rgba(232,168,40,.06);
+        padding:11px 14px;border-radius:0 7px 7px 0;margin-bottom:10px;font-size:12.5px;}
+  .flag.bad{border-left-color:var(--red);background:rgba(218,26,80,.05);}
+  .flag strong{display:block;color:var(--ink);margin-bottom:2px;}
+
+  .note{font-size:11.5px;color:var(--muted);font-style:italic;}
+  .shot{border:1px solid var(--line2);border-radius:8px;overflow:hidden;margin-top:12px;background:#fff;}
+  .shot img{display:block;width:100%;height:auto;}
+  code{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:11px;
+       background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--ink);}
+
+  footer.rpt{margin-top:38px;padding-top:14px;border-top:1px solid var(--line);
+             display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted2);}
+
+  @media print{
+    @page{margin:14mm;}
+    .sheet{max-width:none;padding:0;}
+    h2{break-after:avoid;}
+    table,.verdict,.flag,.stat{break-inside:avoid;}
+    tr{break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <header class="rpt">
+    <div class="brand">
+      {% with logo_id = 'lt-rpt' %}{% include '_paramount_logo.svg' %}{% endwith %}
+      <div class="brand-sub">Technical SEO &middot; Google 2MB Limit</div>
+    </div>
+    <div class="meta">
+      <strong>{{ source_label }}</strong>
+      Generated {{ generated_at }}
+    </div>
+  </header>
+
+  <h1>Google 2MB HTML limit report</h1>
+  <p class="lede">Google truncates fetched HTML at {{ '{:,}'.format(a.limit_bytes) }} bytes.
+     This report shows where that cut lands on this page and what it costs.</p>
+
+  {% set risk = a.risk|default('', true) %}
+  <div class="verdict {% if not a.over_limit %}v-ok{% elif risk == 'critical' %}v-critical{% else %}v-warn{% endif %}">
+    <div class="vtitle">
+      {% if not a.over_limit %}Within the limit — nothing is truncated
+      {% else %}Over the limit — risk: {{ risk|upper }}{% endif %}
+    </div>
+    <p>
+      {% if not a.over_limit %}
+        The full document is {{ mb(a.total_bytes) }} ({{ a.pct_of_limit }}% of the cap), so Googlebot
+        fetches all of it. No content is lost to truncation.
+      {% else %}
+        The page is {{ mb(a.total_bytes) }} — {{ kb(a.overage_bytes) }} past the cap. Everything after
+        byte {{ '{:,}'.format(a.cut_byte) }} is never seen by Google.
+      {% endif %}
+    </p>
+  </div>
+
+  <h2>Size</h2>
+  <div class="stats">
+    <div class="stat {% if a.over_limit %}over{% endif %}">
+      <div class="num">{{ mb(a.total_bytes) }}</div><div class="lbl">Total size</div></div>
+    <div class="stat {% if a.over_limit %}over{% endif %}">
+      <div class="num">{{ a.pct_of_limit }}%</div><div class="lbl">Of 2MB limit</div></div>
+    <div class="stat {% if a.over_limit %}over{% endif %}">
+      <div class="num">{{ kb(a.overage_bytes) }}</div><div class="lbl">Over the cap</div></div>
+    <div class="stat {% if a.over_limit %}over{% endif %}">
+      <div class="num">{{ kb(a.lost_bytes) }}</div><div class="lbl">Lost content</div></div>
+  </div>
+  <div class="meter">
+    <div class="fill {% if a.over_limit %}over{% endif %}"
+         style="width:{{ 100 if a.pct_of_limit >= 100 else a.pct_of_limit }}%"></div>
+  </div>
+  <div class="meter-note"><span>0</span><span>2,097,152 bytes</span></div>
+
+  <h2>Top-level elements</h2>
+  <div class="stats" style="grid-template-columns:repeat(3,1fr)">
+    <div class="stat"><div class="num">{{ a.kept_count }}</div><div class="lbl">Fully kept</div></div>
+    <div class="stat"><div class="num">{{ a.partial_count }}</div><div class="lbl">Partially clipped</div></div>
+    <div class="stat over"><div class="num">{{ a.cut_count }}</div><div class="lbl">Completely lost</div></div>
+  </div>
+
+  {% if a.straddler %}
+  <div class="flag" style="margin-top:14px">
+    <strong>The cut lands inside <code>{{ a.straddler.label }}</code></strong>
+    {{ a.straddler.kept_pct }}% of this element survives; the rest is truncated mid-way.
+  </div>
+  {% endif %}
+
+  {% if blocks %}
+  <table>
+    <thead><tr><th>Element</th><th>Status</th><th>Size</th><th>Kept</th></tr></thead>
+    <tbody>
+      {% for b in blocks %}
+      <tr>
+        <td class="mono">{{ b.label }}</td>
+        <td><span class="pill p-{{ b.status }}">{{ b.status }}</span></td>
+        <td>{{ kb(b.size) }}</td>
+        <td>{{ b.kept_pct }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if blocks_truncated %}
+  <p class="note">Showing {{ blocks|length }} of {{ '{:,}'.format(a.blocks|length) }} top-level
+     elements — clipped and lost first, then the largest retained.</p>
+  {% endif %}
+  {% endif %}
+
+  {% if a.over_limit %}
+  <h2>Ranking-critical tags below the cut</h2>
+  {% if a.seo_hits %}
+  <table>
+    <thead><tr><th>What Google loses</th><th>Count</th><th>Severity</th></tr></thead>
+    <tbody>
+      {% for h in a.seo_hits %}
+      <tr><td>{{ h.what }}</td><td>{{ h.count }}</td>
+          <td><span class="pill p-{{ h.severity }}">{{ h.severity }}</span></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="note">No ranking-critical tags were found past the cut.</p>
+  {% endif %}
+
+  {% if a.lost_text or a.midlist_cut %}
+  <h2>Content flags</h2>
+  {% if a.midlist_cut %}
+  <div class="flag bad"><strong>Truncated mid-list</strong>
+    The cut falls inside a repeating block at <code>{{ a.midlist_cut.where }}</code>,
+    losing roughly {{ '{:,}'.format(a.midlist_cut.cut_items) }} items. Google indexes
+    an incomplete listing.</div>
+  {% endif %}
+  {% if a.lost_text %}
+  <div class="flag"><strong>Body copy lost</strong>
+    About {{ '{:,}'.format(a.lost_text.char_count) }} characters of text
+    {%- if a.lost_text.heading_count %}, including {{ a.lost_text.heading_count }} heading(s){% endif %}
+    fall past the cut.</div>
+  {% endif %}
+  {% endif %}
+  {% endif %}
+
+  {% if render %}
+  <h2>What Google renders</h2>
+  <p class="note" style="margin-top:-4px">
+    The page drawn from the HTML above the cut{% if a.over_limit %} — everything below it is
+    simply absent{% endif %}. Static render with scripts disabled, so JavaScript-injected
+    content won't appear.{% if render.note %} {{ render.note }}{% endif %}
+  </p>
+  <div class="shot"><img src="{{ render.image }}" alt="Page rendered up to the 2MB cut"></div>
+  {% endif %}
+
+  <h2>AI ranking-impact analysis</h2>
+  {% if ai and ai.ok %}
+  <div class="verdict {% if ai.impact == 'high' %}v-critical{% elif ai.impact in ('medium','moderate') %}v-warn{% else %}v-ok{% endif %}">
+    <div class="vtitle">Impact: {{ (ai.impact or 'unknown')|upper }}</div>
+    <p>{{ ai.verdict }}</p>
+  </div>
+  {% if ai.lost_summary %}<p>{{ ai.lost_summary }}</p>{% endif %}
+
+  {% if ai.sections %}
+  <table>
+    <thead><tr><th>Lost section</th><th>What it does</th><th>Vitality</th><th>Fix</th></tr></thead>
+    <tbody>
+      {% for s in ai.sections %}
+      <tr>
+        <td class="mono">{{ s.label }}</td>
+        <td>{{ s.purpose }}{% if s.reason %} <span class="note">{{ s.reason }}</span>{% endif %}</td>
+        <td><span class="pill {% if s.vitality == 'critical' %}p-high{% elif s.vitality in ('important','moderate') %}p-medium{% else %}p-low{% endif %}">{{ s.vitality }}</span></td>
+        <td>{{ s.fix }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if ai.reductions %}
+  <h2>Recommended reductions</h2>
+  <table>
+    <thead><tr><th>Target</th><th>Action</th><th>Saving</th><th>Risk</th></tr></thead>
+    <tbody>
+      {% for r in ai.reductions %}
+      <tr>
+        <td class="mono">{{ r.target }}</td><td>{{ r.action }}</td><td>{{ r.saving }}</td>
+        <td><span class="pill {% if r.risk == 'safe' %}p-kept{% else %}p-partial{% endif %}">{{ r.risk }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+  {% elif ai %}
+  <p class="note">Analysis unavailable: {{ ai.error }}</p>
+  {% else %}
+  <p class="note">No AI provider configured, so this report covers the measured results only.</p>
+  {% endif %}
+
+  <footer class="rpt">
+    <span>Google 2MB HTML Limit Checker &middot; Paramount Digital</span>
+    <span>{% if ai and ai.model_used %}Analysis: {{ ai.model_used }} &middot; {% endif %}{{ generated_at }}</span>
+  </footer>
+</div>
+</body>
+</html>

@@ -7,9 +7,14 @@ clipped**, or **completely lost** — plus an optional AI review of what's bloat
 ## Setup
 
 ```bash
-pip install flask requests
+pip install -r requirements.txt
+playwright install chromium
 python app.py
 ```
+
+`playwright install chromium` downloads a headless browser (~150MB, one-off). It's
+only used to screenshot the truncated render for reports — skip it and everything
+else still works; report generation just notes that the capture failed.
 
 Open **http://localhost:5731**
 
@@ -49,6 +54,24 @@ but anything saved through Settings takes precedence.
    fetched HTML (with everything below the 2MB cut dimmed and a red cut marker) next
    to the snipped HTML Google actually keeps. Sync-scroll, line-wrap, and a search
    box that highlights matches in both panes; very large pages are trimmed near the cut.
+6. **Generate report** — runs the whole pipeline for a URL in one click: fetch,
+   measure, AI analysis, screenshot, render. A modal reports each stage as it
+   finishes, and the export buttons unlock only once the report is complete.
+   The report embeds a **full-page screenshot of the truncated render** — the page
+   drawn from the HTML above the cut only. It's captured with JavaScript disabled,
+   because the 2MB cap applies to the raw HTML fetch: showing JS-injected content
+   would show content Google never received in the HTML. On script-heavy sites the
+   render will look sparse, and that gap is itself the finding. Very tall pages are
+   capped at 14,000px with a note, since a 2MB page can render 700,000px tall.
+   - **HTML** saves a standalone, self-contained file (styles inline, no assets to
+     ship alongside it) — fine to email or drop in a shared drive.
+   - **PDF** opens your browser's print dialog with print stylesheets applied;
+     choose *Save as PDF*. This avoids a heavyweight PDF dependency, so there's
+     nothing extra to install.
+
+   The AI stage is skipped automatically when the page is within the 2MB limit
+   (nothing is lost, so there's nothing to analyse) or when no provider is
+   configured — the report still generates with the measured results.
 
 ## Content-loss flags (deterministic)
 

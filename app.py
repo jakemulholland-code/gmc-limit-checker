@@ -18,13 +18,16 @@ never leave this machine except in calls to the provider you chose.
 
 import os
 import re
+import io
 import json
+import base64
 import html as html_lib
 from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
-from flask import Flask, request, jsonify, render_template
+from datetime import datetime
+from flask import Flask, Response, request, jsonify, render_template, stream_with_context
 
 # ---- Config -----------------------------------------------------------------
 
@@ -1183,6 +1186,174 @@ def ai_review_route():
         return jsonify({"ok": False, "error": f"Could not fetch: {e}"}), 400
     analysis = analyse(raw)
     return jsonify(ai_bloat_review(analysis, raw))
+
+
+CAPTURE_WIDTH = 1280        # viewport width the page is rendered at
+CAPTURE_MAX_HEIGHT = 14000  # a 2MB page can render tens of thousands of px tall
+REPORT_IMAGE_WIDTH = 1000   # downscaled before embedding to keep the report portable
+
+
+def capture_render(raw: bytes, source_url: str) -> tuple[str, int, str]:
+    """
+    Screenshot the page as Googlebot sees it — truncated at the 2MB cut.
+
+    Returns (data_uri, height_px, note). An empty data_uri means capture failed;
+    the report is still worth producing without it, so callers carry on.
+
+    JavaScript stays off: the 2MB cap applies to the raw HTML fetch, so a static
+    render is the honest picture, and it avoids running third-party scripts here.
+    """
+    from playwright.sync_api import sync_playwright
+
+    html = build_truncated_preview(raw, source_url)
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            context = browser.new_context(
+                viewport={"width": CAPTURE_WIDTH, "height": 900},
+                java_script_enabled=False,
+            )
+            page = context.new_page()
+            page.set_content(html, wait_until="load", timeout=45000)
+            try:
+                # Give late CSS/images from the live origin a chance to land.
+                page.wait_for_load_state("networkidle", timeout=8000)
+            except Exception:  # noqa: BLE001
+                pass
+            full_height = page.evaluate(
+                "Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)"
+            ) or 900
+            # Growing the viewport to the capped height bounds what Chromium has to
+            # rasterise; full_page on a multi-page-tall document can balloon memory.
+            height = max(1, min(full_height, CAPTURE_MAX_HEIGHT))
+            page.set_viewport_size({"width": CAPTURE_WIDTH, "height": height})
+            png = page.screenshot(full_page=False)
+            browser.close()
+    except Exception as e:  # noqa: BLE001
+        return "", 0, f"Could not capture the render: {e}"
+
+    from PIL import Image
+    img = Image.open(io.BytesIO(png)).convert("RGB")
+    if img.width > REPORT_IMAGE_WIDTH:
+        ratio = REPORT_IMAGE_WIDTH / img.width
+        img = img.resize((REPORT_IMAGE_WIDTH, round(img.height * ratio)), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=80, optimize=True)
+    data_uri = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+
+    note = ""
+    if full_height > CAPTURE_MAX_HEIGHT:
+        note = (f"Render is {full_height:,}px tall; showing the top "
+                f"{CAPTURE_MAX_HEIGHT:,}px.")
+    return data_uri, full_height, note
+
+
+def build_report_html(analysis: dict, ai: dict | None, source_label: str,
+                      render: dict | None = None) -> str:
+    """Render the standalone report — self-contained so it can be saved or printed."""
+    # A truncated page can have tens of thousands of top-level elements, so the
+    # table has to be capped. What's clipped or lost is the point of the report,
+    # so lead with those and fall back to the largest survivors.
+    order = {"partial": 0, "cut": 1, "kept": 2}
+    blocks = sorted(
+        analysis["blocks"],
+        key=lambda b: (order.get(b["status"], 3), -b["size"]),
+    )
+    shown = blocks[:40]
+    return render_template(
+        "report.html",
+        a=analysis,
+        ai=ai,
+        render=render,
+        blocks=shown,
+        blocks_truncated=len(blocks) > len(shown),
+        source_label=source_label,
+        generated_at=datetime.now().strftime("%d %b %Y, %H:%M"),
+        kb=lambda n: f"{n / 1024:,.1f} KB",
+        mb=lambda n: f"{n / 1024 / 1024:,.2f} MB",
+    )
+
+
+@app.route("/report", methods=["POST"])
+def report_route():
+    """
+    Run the whole pipeline for one URL and stream progress as NDJSON, so the
+    UI can report what's finished rather than showing an untimed spinner.
+    """
+    payload = request.get_json(force=True)
+    source = (payload or {}).get("source", "").strip()
+    if not source:
+        return jsonify({"error": "Provide a URL or paste HTML."}), 400
+
+    cfg = get_ai_config()
+
+    def emit(step, status, detail=""):
+        return json.dumps({"step": step, "status": status, "detail": detail}) + "\n"
+
+    def run():
+        yield emit("fetch", "active", "Fetching the page as Googlebot...")
+        try:
+            label, raw = fetch_html(source)
+        except Exception as e:  # noqa: BLE001
+            yield emit("fetch", "error", f"Could not fetch: {e}")
+            return
+        total = len(raw)
+        yield emit("fetch", "done", f"{total / 1024 / 1024:.2f} MB fetched from {label}")
+
+        yield emit("analyse", "active", "Mapping elements against the 2MB cut...")
+        analysis = analyse(raw)
+        analysis["source_label"] = label
+        over = analysis["over_limit"]
+        yield emit("analyse", "done",
+                   f"{analysis['kept_count']} kept, {analysis['partial_count']} clipped, "
+                   f"{analysis['cut_count']} lost"
+                   + ("" if over else " — page is within the limit"))
+
+        ai = None
+        if not cfg["key"]:
+            yield emit("ai", "skipped", "No AI provider configured — measured results only.")
+        elif not over:
+            yield emit("ai", "skipped", "Page is within the limit, so there is nothing to analyse.")
+        else:
+            yield emit("ai", "active", f"Asking {cfg['model']} what the loss costs...")
+            ai = ai_bloat_review(analysis, raw)
+            if ai.get("ok"):
+                yield emit("ai", "done",
+                           f"Impact rated {ai.get('impact', 'unknown')} "
+                           f"across {len(ai.get('sections', []))} lost section(s)")
+            else:
+                yield emit("ai", "error", ai.get("error", "Analysis failed."))
+
+        yield emit("capture", "active", "Screenshotting the page as Googlebot sees it...")
+        src_url = source if source.lower().startswith(("http://", "https://")) else ""
+        data_uri, height, note = capture_render(raw, src_url)
+        render = {"image": data_uri, "height": height, "note": note} if data_uri else None
+        if data_uri:
+            kb = len(data_uri) * 3 // 4 // 1024
+            yield emit("capture", "done",
+                       f"Captured {height:,}px tall ({kb:,} KB)" + (f" — {note}" if note else ""))
+        else:
+            yield emit("capture", "error", note)
+
+        yield emit("render", "active", "Building the report...")
+        # The report identifies the exact page, not just the site — several pages
+        # of one domain would otherwise be indistinguishable.
+        html = build_report_html(analysis, ai, src_url or label, render)
+        yield json.dumps({
+            "step": "complete",
+            "status": "done",
+            "detail": "Report ready.",
+            "html": html,
+            "filename": report_filename(src_url or label),
+        }) + "\n"
+
+    return Response(stream_with_context(run()), mimetype="application/x-ndjson")
+
+
+def report_filename(source: str) -> str:
+    trimmed = re.sub(r"^https?://", "", source).rstrip("/")
+    safe = re.sub(r"[^a-zA-Z0-9]+", "-", trimmed).strip("-").lower() or "report"
+    return f"2mb-report-{safe[:80]}-{datetime.now():%Y%m%d}"
 
 
 @app.route("/preview", methods=["POST"])
