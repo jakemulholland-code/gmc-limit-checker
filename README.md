@@ -4,19 +4,47 @@ Checks a page against Google's 2,097,152-byte (2 MiB) HTML fetch limit and shows
 exactly where the cut lands — which top-level elements are **kept**, **partially
 clipped**, or **completely lost** — plus an optional AI review of what's bloat.
 
-## Setup
+## Getting it
 
-```bash
-pip install -r requirements.txt
-playwright install chromium
-python app.py
-```
+### The app (Windows)
 
-`playwright install chromium` downloads a headless browser (~150MB, one-off). It's
-only used to screenshot the truncated render for reports — skip it and everything
-else still works; report generation just notes that the capture failed.
+Download `2MB.Limit.Checker_<version>_x64-setup.exe` from the
+[latest release](https://github.com/jakemulholland-code/gmc-limit-checker/releases/latest)
+and run it. Windows SmartScreen warns because the installer isn't code-signed:
+choose **More info**, then **Run anyway**. Then open 2MB Limit Checker from the
+Start menu.
 
-Open **http://localhost:5731**
+No Python needed. The app checks for a new version each time it opens and offers
+**Install and restart**. Report screenshots use your installed Chrome, or Edge if
+Chrome isn't there, so nothing else needs downloading. Saved reports go to your
+Downloads folder, and File Explorer opens to show each one.
+
+Settings live in `%APPDATA%\uk.co.paramountdigital.gmc-limit-checker` (paste that
+into the File Explorer address bar), and the server log is in
+`%LOCALAPPDATA%\uk.co.paramountdigital.gmc-limit-checker\logs\server.log`. The
+app keeps its own settings, so set up your AI provider once more in the app even
+if you'd already done it in the browser version.
+
+### Without the app
+
+- **Windows:** double-click `2MB Limit Checker.bat`
+- **Mac:** double-click `2MB Limit Checker.command` (if it says the file can't be
+  opened, right-click it, choose **Open**, then **Open** again; once only)
+
+You need [Python 3.10 or newer](https://www.python.org/downloads/) (on Windows,
+tick **Add python.exe to PATH** while installing). The first launch takes a
+minute or two to set up its own environment in `.venv`, then the checker opens
+in your browser at **http://localhost:5731**. A small window stays open while it
+runs; close it to shut the checker down.
+
+To run it by hand instead: `pip install -r requirements.txt`, then `python app.py`.
+Report screenshots use Chrome or Edge if installed, otherwise Playwright's
+Chromium (`playwright install chromium`, ~150MB). With no browser at all,
+everything else still works and the report notes that the capture failed.
+
+To build or release the desktop app, see [RELEASING.md](RELEASING.md).
+
+## AI provider
 
 To enable the AI panel, click **Settings** in the top bar and pick a provider:
 
@@ -28,8 +56,9 @@ To enable the AI panel, click **Settings** in the top bar and pick a provider:
 
 Paste your key and the model dropdown fills with everything that key can reach,
 so you can switch models without touching any code. The key is verified before
-it's saved, then written to a local `.env` next to `app.py` (already gitignored)
-and loaded automatically on future runs. It's only ever sent to the provider you
+it's saved, then written to a local `.env` (next to `app.py`, already gitignored;
+in the app's settings folder for the desktop app) and loaded automatically on
+future runs. It's only ever sent to the provider you
 picked. A plain `OPENAI_API_KEY` in your shell still works as an OpenAI setup,
 but anything saved through Settings takes precedence.
 

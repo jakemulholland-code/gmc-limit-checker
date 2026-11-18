@@ -10,11 +10,25 @@ model which retained sections look like bloat that could be trimmed.
 Run:
     python app.py
 
-Then open http://localhost:5731 and pick an AI provider in the app's Settings
-panel to enable the analysis. OpenRouter, OpenAI, or any OpenAI-compatible
-endpoint works. Credentials are written to a local .env file (gitignored) and
-never leave this machine except in calls to the provider you chose.
+That opens http://localhost:5731 in your browser. You normally start it by
+double-clicking "2MB Limit Checker.bat" (Windows) or "2MB Limit Checker.command"
+(Mac), which also handle first-time setup. Pick an AI provider in the app's
+Settings panel to enable the analysis. OpenRouter, OpenAI, or any
+OpenAI-compatible endpoint works. Credentials are written to a local .env file
+(gitignored) and never leave this machine except in calls to the provider you
+chose.
+
+The desktop app (src-tauri) starts it with --app: no browser is opened, the
+port falls back to a free one if 5731 is taken, the address is printed as
+"GMC_CHECKER_URL <url>" for the app to load, and the server stops when the app
+closes its stdin. GMC_CHECKER_DATA_DIR sets where the .env settings file lives.
 """
+
+import argparse
+import socket
+import sys
+import threading
+import webbrowser
 
 import os
 import re
@@ -26,13 +40,20 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
+from werkzeug.serving import make_server
 from datetime import datetime
-from flask import Flask, Response, request, jsonify, render_template, stream_with_context
+from flask import Flask, Response, request, jsonify, render_template, send_file, stream_with_context
 
 # ---- Config -----------------------------------------------------------------
 
 GOOGLE_LIMIT_BYTES = 2 * 1024 * 1024  # 2,097,152 — Google's documented cap
-PORT = 5731                            # uncommon local port
+HOST, PORT = "127.0.0.1", 5731         # uncommon local port
+
+HERE = Path(__file__).resolve().parent
+# In the desktop app's bundled server (PyInstaller), data files sit in _MEIPASS.
+BUNDLE = Path(getattr(sys, "_MEIPASS", HERE))
+# The desktop app keeps settings in its app data folder; otherwise next to app.py.
+DATA_DIR = Path(os.environ.get("GMC_CHECKER_DATA_DIR") or HERE)
 
 # Every provider here speaks the OpenAI chat-completions dialect, so one client
 # covers all of them — only the base URL, key and model name change.
@@ -63,12 +84,12 @@ PROVIDERS = {
 }
 DEFAULT_PROVIDER = "openrouter"
 
-ENV_FILE = Path(__file__).resolve().parent / ".env"
+ENV_FILE = DATA_DIR / ".env"
 ENV_PROVIDER, ENV_KEY, ENV_MODEL, ENV_BASE = (
     "AI_PROVIDER", "AI_API_KEY", "AI_MODEL", "AI_BASE_URL"
 )
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=str(BUNDLE / "templates"))
 
 
 # ---- Credential storage (.env) ----------------------------------------------
@@ -105,6 +126,7 @@ def write_env_values(values: dict[str, str | None]) -> None:
         os.environ.pop(name, None)
         if value:
             os.environ[name] = value
+    ENV_FILE.parent.mkdir(parents=True, exist_ok=True)
     ENV_FILE.write_text("\n".join(lines).strip() + "\n", encoding="utf-8")
     os.chmod(ENV_FILE, 0o600)
 
@@ -1193,6 +1215,21 @@ CAPTURE_MAX_HEIGHT = 14000  # a 2MB page can render tens of thousands of px tall
 REPORT_IMAGE_WIDTH = 1000   # downscaled before embedding to keep the report portable
 
 
+def launch_browser(p):
+    """Use the installed Chrome, then Edge (always there on Windows), then Playwright's Chromium.
+
+    The desktop app ships no browser of its own, so it relies on the first two.
+    """
+    errors = []
+    for channel in ("chrome", "msedge", None):
+        try:
+            return p.chromium.launch(channel=channel) if channel else p.chromium.launch()
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"{channel or 'chromium'}: {str(e).strip().splitlines()[0]}")
+    raise RuntimeError("no browser found. Install Google Chrome or Microsoft Edge. ("
+                       + "; ".join(errors) + ")")
+
+
 def capture_render(raw: bytes, source_url: str) -> tuple[str, int, str]:
     """
     Screenshot the page as Googlebot sees it — truncated at the 2MB cut.
@@ -1208,7 +1245,7 @@ def capture_render(raw: bytes, source_url: str) -> tuple[str, int, str]:
     html = build_truncated_preview(raw, source_url)
     try:
         with sync_playwright() as p:
-            browser = p.chromium.launch()
+            browser = launch_browser(p)
             context = browser.new_context(
                 viewport={"width": CAPTURE_WIDTH, "height": 900},
                 java_script_enabled=False,
@@ -1268,6 +1305,8 @@ def build_report_html(analysis: dict, ai: dict | None, source_label: str,
         blocks=shown,
         blocks_truncated=len(blocks) > len(shown),
         source_label=source_label,
+        # Inlined so a saved report carries its icon with no files beside it.
+        favicon_svg=(BUNDLE / "icons" / "favicon.svg").read_text(encoding="utf-8").strip(),
         generated_at=datetime.now().strftime("%d %b %Y, %H:%M"),
         kb=lambda n: f"{n / 1024:,.1f} KB",
         mb=lambda n: f"{n / 1024 / 1024:,.2f} MB",
@@ -1430,9 +1469,81 @@ def source_route():
     })
 
 
+@app.route("/favicon.svg")
+@app.route("/favicon.ico")
+def favicon():
+    return send_file(BUNDLE / "icons" / "favicon.svg", mimetype="image/svg+xml", max_age=86400)
+
+
+def port_in_use(port: int) -> bool:
+    """
+    True if something is already listening on the port. On Windows, SO_REUSEADDR
+    (which Werkzeug sets) lets a second server bind a port that's in use, and
+    requests then go to the old one, so a failed bind can't be relied on.
+    """
+    try:
+        with socket.create_connection((HOST, port), timeout=0.5):
+            return True
+    except OSError:
+        return False
+
+
+def exit_when_stdin_closes():
+    """The desktop app closes our stdin when it quits; stop with it."""
+    try:
+        while sys.stdin.readline():
+            pass
+    except (OSError, ValueError):
+        pass
+    os._exit(0)
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Google 2MB HTML Limit Checker")
+    ap.add_argument("--app", action="store_true",
+                    help="run for the desktop app: no browser, any free port, stop when stdin closes")
+    ap.add_argument("--port", type=int, default=PORT)
+    args = ap.parse_args()
+    # The desktop app reads our output through a pipe. Frozen builds ignore PYTHONIOENCODING and
+    # PYTHONUNBUFFERED, so set both here: UTF-8 and line by line.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
+        except (AttributeError, ValueError):
+            pass
+
+    try:
+        if port_in_use(args.port):
+            raise OSError("port in use")
+        server = make_server(HOST, args.port, app, threaded=True)
+    except OSError:
+        if not args.app:
+            url = f"http://localhost:{args.port}/"
+            print(f"The 2MB Limit Checker already seems to be running. Opening {url}")
+            webbrowser.open(url)
+            return
+        server = make_server(HOST, 0, app, threaded=True)
+    port = server.server_port
+    if args.app:
+        # 127.0.0.1, not localhost: localhost can resolve to IPv6 first, which we don't listen on.
+        print(f"GMC_CHECKER_URL http://{HOST}:{port}/", flush=True)
+        threading.Thread(target=exit_when_stdin_closes, daemon=True).start()
+    else:
+        url = f"http://localhost:{port}/"
+        cfg = get_ai_config()
+        ai = (f"{provider_label(cfg['provider'])} / {cfg['model']}" if cfg["key"]
+              else "set up a provider in the app under Settings")
+        print(f"\n  Google 2MB Limit Checker -> {url}")
+        print(f"  AI review: {ai}")
+        print("  Leave this window open while you use it. Close it to shut the checker down.\n")
+        threading.Timer(0.8, webbrowser.open, [url]).start()
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+
+
 if __name__ == "__main__":
-    print(f"\n  Google 2MB Limit Checker -> http://localhost:{PORT}")
-    _cfg = get_ai_config()
-    _ai = f"{provider_label(_cfg['provider'])} / {_cfg['model']}" if _cfg["key"] else "set up a provider in the app under Settings"
-    print(f"  AI review: {_ai}\n")
-    app.run(port=PORT, debug=False)
+    main()

@@ -1,0 +1,44 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "2MB Limit Checker",
+  "version": "0.1.0",
+  "identifier": "uk.co.paramountdigital.gmc-limit-checker",
+  "build": {
+    "frontendDist": "../desktop",
+    "beforeBuildCommand": "npm run build:server"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "createUpdaterArtifacts": true,
+    "resources": {
+      "resources/gmc-limit-checker-server/": "server/"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDBBODdCMUI1NDVBNUIwNjUKUldSbHNLVkZ0YkdIQ2dXNllYc3owSmIwN0I4ZWp3ckJhOE0rLzE2QmZuaTdRU2RyVmZENHdoTHcK",
+      "endpoints": [
+        "https://github.com/jakemulholland-code/gmc-limit-checker/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

@@ -5,3 +5,8 @@ venv/
 .env
 *.egg-info/
 .DS_Store
+node_modules/
+build/
+src-tauri/target/
+src-tauri/gen/schemas/
+src-tauri/resources/
